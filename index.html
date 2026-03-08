@@ -125,142 +125,141 @@
     </div>
   </div>
 
-  <script>
-    const loadBtn = document.getElementById('loadBtn');
-    const tickerInput = document.getElementById('ticker');
-    const apiKeyInput = document.getElementById('apiKey');
-    const expirationSelect = document.getElementById('expiration');
-    const optionTypeSelect = document.getElementById('optionType');
-    const statusDiv = document.getElementById('status');
-    const tableBody = document.querySelector('#resultsTable tbody');
+ <script>
+  const loadBtn = document.getElementById('loadBtn');
+  const tickerInput = document.getElementById('ticker');
+  const apiKeyInput = document.getElementById('apiKey');
+  const expirationSelect = document.getElementById('expiration');
+  const optionTypeSelect = document.getElementById('optionType');
+  const statusDiv = document.getElementById('status');
+  const tableBody = document.querySelector('#resultsTable tbody');
 
-    let fullOptionsData = [];
+  let fullOptionsData = [];
 
-    function safeNum(value) {
-      return value === null || value === undefined || value === '' ? '' : Number(value).toFixed(2);
+  function safeNum(value) {
+    return value === null || value === undefined || value === '' ? '' : Number(value).toFixed(2);
+  }
+
+  function renderTable(rows) {
+    const selectedType = optionTypeSelect.value;
+    let filteredRows = rows;
+
+    if (selectedType !== 'all') {
+      filteredRows = rows.filter(r => r.side === selectedType);
     }
 
-    function renderTable(rows) {
-      const selectedType = optionTypeSelect.value;
-      let filteredRows = rows;
-
-      if (selectedType !== 'all') {
-        filteredRows = rows.filter(r => r.side === selectedType);
-      }
-
-      if (!filteredRows || filteredRows.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="9">No options found for this selection.</td></tr>';
-        return;
-      }
-
-      tableBody.innerHTML = filteredRows.slice(0, 100).map(row => {
-        const bid = Number(row.bid || 0);
-        const ask = Number(row.ask || 0);
-        const mid = (bid > 0 && ask > 0) ? ((bid + ask) / 2).toFixed(2) : '';
-        return `
-          <tr>
-            <td>${row.side || ''}</td>
-            <td>${row.strike || ''}</td>
-            <td>${row.expiration || ''}</td>
-            <td>${safeNum(row.bid)}</td>
-            <td>${safeNum(row.ask)}</td>
-            <td>${mid}</td>
-            <td>${safeNum(row.last)}</td>
-            <td>${row.volume ?? ''}</td>
-            <td>${row.openInterest ?? ''}</td>
-          </tr>
-        `;
-      }).join('');
+    if (!filteredRows || filteredRows.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="9">No options found for this selection.</td></tr>';
+      return;
     }
 
-    function populateExpirations(rows) {
-      const expirations = [...new Set(rows.map(r => r.expiration).filter(Boolean))].sort();
-      expirationSelect.innerHTML = '';
+    tableBody.innerHTML = filteredRows.slice(0, 100).map(row => {
+      const bid = Number(row.bid || 0);
+      const ask = Number(row.ask || 0);
+      const mid = (bid > 0 && ask > 0) ? ((bid + ask) / 2).toFixed(2) : '';
+      return `
+        <tr>
+          <td>${row.side || ''}</td>
+          <td>${row.strike || ''}</td>
+          <td>${row.expiration || ''}</td>
+          <td>${safeNum(row.bid)}</td>
+          <td>${safeNum(row.ask)}</td>
+          <td>${mid}</td>
+          <td>${safeNum(row.last)}</td>
+          <td>${row.volume ?? ''}</td>
+          <td>${row.openInterest ?? ''}</td>
+        </tr>
+      `;
+    }).join('');
+  }
 
-      if (expirations.length === 0) {
-        expirationSelect.innerHTML = '<option value="">No expirations found</option>';
-        return;
-      }
+  function populateExpirations(rows) {
+    const expirations = [...new Set(rows.map(r => r.expiration).filter(Boolean))].sort();
+    expirationSelect.innerHTML = '';
 
-      expirations.forEach(exp => {
-        const option = document.createElement('option');
-        option.value = exp;
-        option.textContent = exp;
-        expirationSelect.appendChild(option);
-      });
+    if (expirations.length === 0) {
+      expirationSelect.innerHTML = '<option value="">No expirations found</option>';
+      return;
     }
 
-    function refreshFilteredView() {
-      const exp = expirationSelect.value;
-      const filtered = fullOptionsData.filter(item => item.expiration === exp);
-      renderTable(filtered);
-    }
-
-    expirationSelect.addEventListener('change', refreshFilteredView);
-    optionTypeSelect.addEventListener('change', refreshFilteredView);
-
-    [tickerInput, apiKeyInput].forEach(input => {
-      input.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          loadBtn.click();
-        }
-      });
+    expirations.forEach(exp => {
+      const option = document.createElement('option');
+      option.value = exp;
+      option.textContent = exp;
+      expirationSelect.appendChild(option);
     });
+  }
 
-    loadBtn.addEventListener('click', async () => {
-      const ticker = tickerInput.value.trim().toUpperCase();
-      const token = apiKeyInput.value.trim();
+  function refreshFilteredView() {
+    const exp = expirationSelect.value;
+    const filtered = fullOptionsData.filter(item => item.expiration === exp);
+    renderTable(filtered);
+  }
 
-      if (!ticker || !token) {
-        statusDiv.textContent = 'Please enter ticker and token.';
+  expirationSelect.addEventListener('change', refreshFilteredView);
+  optionTypeSelect.addEventListener('change', refreshFilteredView);
+
+  [tickerInput, apiKeyInput].forEach(input => {
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        loadBtn.click();
+      }
+    });
+  });
+
+  loadBtn.addEventListener('click', async () => {
+    const ticker = tickerInput.value.trim().toUpperCase();
+    const token = apiKeyInput.value.trim();
+
+    if (!ticker || !token) {
+      statusDiv.textContent = 'Please enter ticker and token.';
+      return;
+    }
+
+    statusDiv.textContent = 'Loading options data...';
+    tableBody.innerHTML = '<tr><td colspan="9">Loading...</td></tr>';
+
+    try {
+      const url = `https://api.marketdata.app/v1/options/chain/${ticker}/?token=${encodeURIComponent(token)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!data || !data.s || data.s === 'error') {
+        statusDiv.textContent = `API error: ${JSON.stringify(data)}`;
+        tableBody.innerHTML = '<tr><td colspan="9">API returned an error.</td></tr>';
         return;
       }
 
-      statusDiv.textContent = 'Loading options data...';
-      tableBody.innerHTML = '<tr><td colspan="9">Loading...</td></tr>';
+      const len = (data.optionSymbol || []).length;
+      fullOptionsData = [];
 
-      try {
-        const url = `https://api.marketdata.app/v1/options/chain/${ticker}/?token=${encodeURIComponent(token)}`;
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (!data || !data.s || data.s === 'error') {
-          statusDiv.textContent = `API error: ${JSON.stringify(data)}`;
-          tableBody.innerHTML = '<tr><td colspan="9">API returned an error.</td></tr>';
-          return;
-        }
-
-        const len = (data.optionSymbol || []).length;
-
+      for (let i = 0; i < len; i++) {
         const rawExpiration = data.expiration?.[i];
-const expirationDate = rawExpiration
-  ? new Date(Number(rawExpiration) * 1000).toISOString().split('T')[0]
-  : '';
+        const expirationDate = rawExpiration
+          ? new Date(Number(rawExpiration) * 1000).toISOString().split('T')[0]
+          : '';
 
-fullOptionsData.push({
-  optionSymbol: data.optionSymbol?.[i],
-  side: data.side?.[i],
-  strike: data.strike?.[i],
-  expiration: expirationDate,
-  bid: data.bid?.[i],
-  ask: data.ask?.[i],
-  last: data.last?.[i],
-  volume: data.volume?.[i],
-  openInterest: data.openInterest?.[i]
-});
-        }
-
-        populateExpirations(fullOptionsData);
-        refreshFilteredView();
-
-        statusDiv.textContent = `Loaded ${fullOptionsData.length} contracts for ${ticker}.`;
-      } catch (error) {
-        console.error(error);
-        statusDiv.textContent = `Error loading data: ${error.message}`;
-        tableBody.innerHTML = '<tr><td colspan="9">Error loading data.</td></tr>';
+        fullOptionsData.push({
+          optionSymbol: data.optionSymbol?.[i],
+          side: data.side?.[i],
+          strike: data.strike?.[i],
+          expiration: expirationDate,
+          bid: data.bid?.[i],
+          ask: data.ask?.[i],
+          last: data.last?.[i],
+          volume: data.volume?.[i],
+          openInterest: data.openInterest?.[i]
+        });
       }
-    });
-  </script>
-</body>
-</html>
 
+      populateExpirations(fullOptionsData);
+      refreshFilteredView();
+
+      statusDiv.textContent = `Loaded ${fullOptionsData.length} contracts for ${ticker}.`;
+    } catch (error) {
+      console.error(error);
+      statusDiv.textContent = `Error loading data: ${error.message}`;
+      tableBody.innerHTML = '<tr><td colspan="9">Error loading data.</td></tr>';
+    }
+  });
+</script>
