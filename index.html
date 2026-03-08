@@ -13,21 +13,20 @@
       color: #1f2937;
     }
     .container {
-      max-width: 1000px;
+      max-width: 1100px;
       margin: 0 auto;
       background: white;
       padding: 24px;
       border-radius: 14px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.08);
     }
-    h1 {
-      margin-top: 0;
-    }
+    h1 { margin-top: 0; }
     .row {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
       margin-bottom: 16px;
+      align-items: center;
     }
     input, button, select {
       padding: 10px 12px;
@@ -35,21 +34,18 @@
       border: 1px solid #d1d5db;
       font-size: 14px;
     }
-    input {
-      min-width: 180px;
-    }
+    input { min-width: 220px; }
     button {
       background: #111827;
       color: white;
       cursor: pointer;
       border: none;
     }
-    button:hover {
-      opacity: 0.92;
-    }
+    button:hover { opacity: 0.92; }
     .status {
       margin: 12px 0 20px;
       font-size: 14px;
+      white-space: pre-wrap;
     }
     table {
       width: 100%;
@@ -62,9 +58,7 @@
       padding: 10px;
       text-align: left;
     }
-    th {
-      background: #f3f4f6;
-    }
+    th { background: #f3f4f6; }
     .small {
       color: #6b7280;
       font-size: 13px;
@@ -81,10 +75,10 @@
 <body>
   <div class="container">
     <h1>Options Range Calculator</h1>
-    <p class="small">Version 1: test ticker, expiration, and options chain response.</p>
+    <p class="small">Version 2: MarketData.app options chain test.</p>
 
     <div class="row">
-      <input id="apiKey" type="password" placeholder="Paste Alpha Vantage API Key" />
+      <input id="apiKey" type="password" placeholder="Paste MarketData Token" />
       <input id="ticker" type="text" placeholder="Ticker (e.g. NFLX)" value="NFLX" />
       <button id="loadBtn">Load Options</button>
     </div>
@@ -96,16 +90,24 @@
       <select id="expiration">
         <option value="">No expiration loaded yet</option>
       </select>
+
+      <label for="optionType"><strong>Type:</strong></label>
+      <select id="optionType">
+        <option value="all">All</option>
+        <option value="call">Calls</option>
+        <option value="put">Puts</option>
+      </select>
     </div>
 
     <table id="resultsTable">
       <thead>
         <tr>
-          <th>Contract Type</th>
+          <th>Type</th>
           <th>Strike</th>
           <th>Expiration</th>
           <th>Bid</th>
           <th>Ask</th>
+          <th>Mid</th>
           <th>Last</th>
           <th>Volume</th>
           <th>Open Interest</th>
@@ -113,13 +115,13 @@
       </thead>
       <tbody>
         <tr>
-          <td colspan="8">No data yet.</td>
+          <td colspan="9">No data yet.</td>
         </tr>
       </tbody>
     </table>
 
     <div class="note">
-      First goal: confirm the API returns usable option chain data. After that, we add the optimal price range calculation.
+      First goal: confirm expirations and option chain load correctly from MarketData.app.
     </div>
   </div>
 
@@ -128,29 +130,47 @@
     const tickerInput = document.getElementById('ticker');
     const apiKeyInput = document.getElementById('apiKey');
     const expirationSelect = document.getElementById('expiration');
+    const optionTypeSelect = document.getElementById('optionType');
     const statusDiv = document.getElementById('status');
     const tableBody = document.querySelector('#resultsTable tbody');
 
     let fullOptionsData = [];
 
+    function safeNum(value) {
+      return value === null || value === undefined || value === '' ? '' : Number(value).toFixed(2);
+    }
+
     function renderTable(rows) {
-      if (!rows || rows.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="8">No options found for this expiration.</td></tr>';
+      const selectedType = optionTypeSelect.value;
+      let filteredRows = rows;
+
+      if (selectedType !== 'all') {
+        filteredRows = rows.filter(r => r.side === selectedType);
+      }
+
+      if (!filteredRows || filteredRows.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="9">No options found for this selection.</td></tr>';
         return;
       }
 
-      tableBody.innerHTML = rows.slice(0, 50).map(row => `
-        <tr>
-          <td>${row.type || ''}</td>
-          <td>${row.strike || ''}</td>
-          <td>${row.expiration || ''}</td>
-          <td>${row.bid || ''}</td>
-          <td>${row.ask || ''}</td>
-          <td>${row.last || ''}</td>
-          <td>${row.volume || ''}</td>
-          <td>${row.open_interest || ''}</td>
-        </tr>
-      `).join('');
+      tableBody.innerHTML = filteredRows.slice(0, 100).map(row => {
+        const bid = Number(row.bid || 0);
+        const ask = Number(row.ask || 0);
+        const mid = (bid > 0 && ask > 0) ? ((bid + ask) / 2).toFixed(2) : '';
+        return `
+          <tr>
+            <td>${row.side || ''}</td>
+            <td>${row.strike || ''}</td>
+            <td>${row.expiration || ''}</td>
+            <td>${safeNum(row.bid)}</td>
+            <td>${safeNum(row.ask)}</td>
+            <td>${mid}</td>
+            <td>${safeNum(row.last)}</td>
+            <td>${row.volume ?? ''}</td>
+            <td>${row.openInterest ?? ''}</td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function populateExpirations(rows) {
@@ -170,57 +190,71 @@
       });
     }
 
-    expirationSelect.addEventListener('change', () => {
+    function refreshFilteredView() {
       const exp = expirationSelect.value;
       const filtered = fullOptionsData.filter(item => item.expiration === exp);
       renderTable(filtered);
+    }
+
+    expirationSelect.addEventListener('change', refreshFilteredView);
+    optionTypeSelect.addEventListener('change', refreshFilteredView);
+
+    [tickerInput, apiKeyInput].forEach(input => {
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          loadBtn.click();
+        }
+      });
     });
 
     loadBtn.addEventListener('click', async () => {
       const ticker = tickerInput.value.trim().toUpperCase();
-      const apiKey = apiKeyInput.value.trim();
+      const token = apiKeyInput.value.trim();
 
-      if (!ticker || !apiKey) {
-        statusDiv.textContent = 'Please enter ticker and API key.';
+      if (!ticker || !token) {
+        statusDiv.textContent = 'Please enter ticker and token.';
         return;
       }
 
       statusDiv.textContent = 'Loading options data...';
-      tableBody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="9">Loading...</td></tr>';
 
       try {
-        const url = `https://www.alphavantage.co/query?function=HISTORICAL_OPTIONS&symbol=${ticker}&apikey=${apiKey}`;
+        const url = `https://api.marketdata.app/v1/options/chain/${ticker}/?token=${encodeURIComponent(token)}`;
         const response = await fetch(url);
         const data = await response.json();
 
-        if (!Array.isArray(data.data)) {
-          console.log(data);
-          statusDiv.textContent = 'No valid options data returned. Check ticker, API key, or API limit.';
-          tableBody.innerHTML = '<tr><td colspan="8">No valid data returned.</td></tr>';
+        if (!data || !data.s || data.s === 'error') {
+          statusDiv.textContent = `API error: ${JSON.stringify(data)}`;
+          tableBody.innerHTML = '<tr><td colspan="9">API returned an error.</td></tr>';
           return;
         }
 
-        fullOptionsData = data.data.map(item => ({
-          type: item.type,
-          strike: item.strike,
-          expiration: item.expiration,
-          bid: item.bid,
-          ask: item.ask,
-          last: item.last,
-          volume: item.volume,
-          open_interest: item.open_interest
-        }));
+        const len = (data.optionSymbol || []).length;
+
+        fullOptionsData = [];
+        for (let i = 0; i < len; i++) {
+          fullOptionsData.push({
+            optionSymbol: data.optionSymbol?.[i],
+            side: data.side?.[i],
+            strike: data.strike?.[i],
+            expiration: data.expiration?.[i],
+            bid: data.bid?.[i],
+            ask: data.ask?.[i],
+            last: data.last?.[i],
+            volume: data.volume?.[i],
+            openInterest: data.openInterest?.[i]
+          });
+        }
 
         populateExpirations(fullOptionsData);
-        const firstExp = expirationSelect.value;
-        const filtered = fullOptionsData.filter(item => item.expiration === firstExp);
-        renderTable(filtered);
+        refreshFilteredView();
 
         statusDiv.textContent = `Loaded ${fullOptionsData.length} contracts for ${ticker}.`;
       } catch (error) {
         console.error(error);
-        statusDiv.textContent = 'Error loading data. Open browser console for details.';
-        tableBody.innerHTML = '<tr><td colspan="8">Error loading data.</td></tr>';
+        statusDiv.textContent = `Error loading data: ${error.message}`;
+        tableBody.innerHTML = '<tr><td colspan="9">Error loading data.</td></tr>';
       }
     });
   </script>
