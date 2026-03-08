@@ -232,19 +232,22 @@
 
         const len = (data.optionSymbol || []).length;
 
-        fullOptionsData = [];
-        for (let i = 0; i < len; i++) {
-          fullOptionsData.push({
-            optionSymbol: data.optionSymbol?.[i],
-            side: data.side?.[i],
-            strike: data.strike?.[i],
-            expiration: data.expiration?.[i],
-            bid: data.bid?.[i],
-            ask: data.ask?.[i],
-            last: data.last?.[i],
-            volume: data.volume?.[i],
-            openInterest: data.openInterest?.[i]
-          });
+        const rawExpiration = data.expiration?.[i];
+const expirationDate = rawExpiration
+  ? new Date(Number(rawExpiration) * 1000).toISOString().split('T')[0]
+  : '';
+
+fullOptionsData.push({
+  optionSymbol: data.optionSymbol?.[i],
+  side: data.side?.[i],
+  strike: data.strike?.[i],
+  expiration: expirationDate,
+  bid: data.bid?.[i],
+  ask: data.ask?.[i],
+  last: data.last?.[i],
+  volume: data.volume?.[i],
+  openInterest: data.openInterest?.[i]
+});
         }
 
         populateExpirations(fullOptionsData);
@@ -260,3 +263,4 @@
   </script>
 </body>
 </html>
+
