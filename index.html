@@ -14,7 +14,7 @@
     }
 
     .container {
-      max-width: 1100px;
+      max-width: 1250px;
       margin: 0 auto;
       background: white;
       padding: 24px;
@@ -24,6 +24,12 @@
 
     h1 {
       margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .small {
+      color: #6b7280;
+      font-size: 13px;
     }
 
     .row {
@@ -62,6 +68,31 @@
       white-space: pre-wrap;
     }
 
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 12px 0 20px;
+    }
+
+    .card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .card-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+
+    .card-value {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -79,11 +110,6 @@
       background: #f3f4f6;
     }
 
-    .small {
-      color: #6b7280;
-      font-size: 13px;
-    }
-
     .note {
       margin-top: 20px;
       padding: 12px;
@@ -91,12 +117,33 @@
       border-radius: 8px;
       font-size: 13px;
     }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+
+    .good {
+      color: #065f46;
+    }
+
+    .warn {
+      color: #92400e;
+    }
+
+    .mono {
+      font-family: Consolas, Monaco, monospace;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Options Range Calculator</h1>
-    <p class="small">Version 3: MarketData.app options chain test with basic contract filtering.</p>
+    <p class="small">Version 4: quote + option chain + basic optimal premium range engine.</p>
 
     <div class="row">
       <input id="apiKey" type="password" placeholder="Paste MarketData Token" />
@@ -106,6 +153,25 @@
 
     <div class="status" id="status">Waiting for input...</div>
 
+    <div class="summary-grid">
+      <div class="card">
+        <div class="card-label">Current Stock Price</div>
+        <div class="card-value" id="stockPrice">--</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Suggested Premium Range</div>
+        <div class="card-value" id="premiumRange">--</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Suggested Ideal Premium</div>
+        <div class="card-value" id="idealPremium">--</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Top Contracts Used</div>
+        <div class="card-value" id="contractsUsed">--</div>
+      </div>
+    </div>
+
     <div class="row">
       <label for="expiration"><strong>Expiration:</strong></label>
       <select id="expiration">
@@ -114,9 +180,16 @@
 
       <label for="optionType"><strong>Type:</strong></label>
       <select id="optionType">
-        <option value="all">All</option>
         <option value="call">Calls</option>
         <option value="put">Puts</option>
+      </select>
+
+      <label for="distancePct"><strong>Strike Distance %:</strong></label>
+      <select id="distancePct">
+        <option value="0.08">8%</option>
+        <option value="0.10" selected>10%</option>
+        <option value="0.12">12%</option>
+        <option value="0.15">15%</option>
       </select>
     </div>
 
@@ -130,20 +203,23 @@
           <th>Ask</th>
           <th>Mid</th>
           <th>Spread</th>
+          <th>Spread %</th>
           <th>Last</th>
           <th>Volume</th>
           <th>Open Interest</th>
+          <th>Distance %</th>
+          <th>Quality Score</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td colspan="10">No data yet.</td>
+          <td colspan="13">No data yet.</td>
         </tr>
       </tbody>
     </table>
 
     <div class="note">
-      First goal: confirm expirations and option chain load correctly from MarketData.app with usable contracts only.
+      This v1 engine favors contracts near the underlying price with reasonable bid/ask spread and liquidity. We will refine the exact “Yoel logic” after testing.
     </div>
   </div>
 
@@ -153,55 +229,122 @@
     const apiKeyInput = document.getElementById('apiKey');
     const expirationSelect = document.getElementById('expiration');
     const optionTypeSelect = document.getElementById('optionType');
+    const distancePctSelect = document.getElementById('distancePct');
     const statusDiv = document.getElementById('status');
     const tableBody = document.querySelector('#resultsTable tbody');
 
-    let fullOptionsData = [];
+    const stockPriceEl = document.getElementById('stockPrice');
+    const premiumRangeEl = document.getElementById('premiumRange');
+    const idealPremiumEl = document.getElementById('idealPremium');
+    const contractsUsedEl = document.getElementById('contractsUsed');
 
-    function safeNum(value) {
+    let fullOptionsData = [];
+    let currentStockPrice = null;
+
+    function safeNum(value, decimals = 2) {
       return value === null || value === undefined || value === '' || Number.isNaN(Number(value))
         ? ''
-        : Number(value).toFixed(2);
+        : Number(value).toFixed(decimals);
+    }
+
+    function percentile(sortedArr, p) {
+      if (!sortedArr.length) return null;
+      const index = (sortedArr.length - 1) * p;
+      const lower = Math.floor(index);
+      const upper = Math.ceil(index);
+      if (lower === upper) return sortedArr[lower];
+      return sortedArr[lower] + (sortedArr[upper] - sortedArr[lower]) * (index - lower);
+    }
+
+    function computeQualityScore(contract) {
+      const mid = contract.mid;
+      const spread = contract.spread;
+      const spreadPct = contract.spreadPct;
+      const oi = contract.openInterest;
+      const volume = contract.volume;
+      const distancePct = contract.distancePct;
+
+      let score = 0;
+
+      if (mid >= 0.2 && mid <= 15) score += 2;
+      if (mid >= 0.5 && mid <= 8) score += 1;
+
+      if (spreadPct <= 0.10) score += 3;
+      else if (spreadPct <= 0.15) score += 2;
+      else if (spreadPct <= 0.25) score += 1;
+
+      if (oi >= 500) score += 3;
+      else if (oi >= 100) score += 2;
+      else if (oi >= 25) score += 1;
+
+      if (volume >= 200) score += 2;
+      else if (volume >= 50) score += 1;
+
+      if (distancePct <= 0.03) score += 3;
+      else if (distancePct <= 0.06) score += 2;
+      else if (distancePct <= 0.10) score += 1;
+
+      return score;
+    }
+
+    function transformContract(raw) {
+      const bid = Number(raw.bid || 0);
+      const ask = Number(raw.ask || 0);
+      const strike = Number(raw.strike || 0);
+      const volume = Number(raw.volume || 0);
+      const openInterest = Number(raw.openInterest || 0);
+      const last = Number(raw.last || 0);
+      const side = raw.side || '';
+
+      const mid = (bid > 0 && ask > 0) ? (bid + ask) / 2 : 0;
+      const spread = (bid > 0 && ask > 0) ? (ask - bid) : 0;
+      const spreadPct = (mid > 0) ? (spread / mid) : 999;
+
+      let distancePct = 999;
+      if (currentStockPrice && strike > 0) {
+        distancePct = Math.abs(strike - currentStockPrice) / currentStockPrice;
+      }
+
+      return {
+        ...raw,
+        bid,
+        ask,
+        strike,
+        volume,
+        openInterest,
+        last,
+        side,
+        mid,
+        spread,
+        spreadPct,
+        distancePct,
+        qualityScore: 0
+      };
     }
 
     function renderTable(rows) {
-      const selectedType = optionTypeSelect.value;
-      let filteredRows = rows;
-
-      if (selectedType !== 'all') {
-        filteredRows = rows.filter(r => r.side === selectedType);
-      }
-
-      filteredRows = filteredRows.filter(r => {
-        return r.ask > 0 && r.bid > 0 && r.openInterest > 0 && r.strike >= 10;
-      });
-
-      if (!filteredRows || filteredRows.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="10">No options found for this selection.</td></tr>';
+      if (!rows || rows.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="13">No options found for this selection.</td></tr>';
         return;
       }
 
-      tableBody.innerHTML = filteredRows.slice(0, 150).map(row => {
-        const bid = Number(row.bid || 0);
-        const ask = Number(row.ask || 0);
-        const mid = (bid > 0 && ask > 0) ? ((bid + ask) / 2) : null;
-        const spread = (bid > 0 && ask > 0) ? (ask - bid) : null;
-
-        return `
-          <tr>
-            <td>${row.side || ''}</td>
-            <td>${safeNum(row.strike)}</td>
-            <td>${row.expiration || ''}</td>
-            <td>${safeNum(row.bid)}</td>
-            <td>${safeNum(row.ask)}</td>
-            <td>${safeNum(mid)}</td>
-            <td>${safeNum(spread)}</td>
-            <td>${safeNum(row.last)}</td>
-            <td>${row.volume ?? ''}</td>
-            <td>${row.openInterest ?? ''}</td>
-          </tr>
-        `;
-      }).join('');
+      tableBody.innerHTML = rows.slice(0, 150).map(row => `
+        <tr>
+          <td>${row.side || ''}</td>
+          <td>${safeNum(row.strike)}</td>
+          <td>${row.expiration || ''}</td>
+          <td>${safeNum(row.bid)}</td>
+          <td>${safeNum(row.ask)}</td>
+          <td>${safeNum(row.mid)}</td>
+          <td>${safeNum(row.spread)}</td>
+          <td>${safeNum(row.spreadPct * 100)}%</td>
+          <td>${safeNum(row.last)}</td>
+          <td>${row.volume}</td>
+          <td>${row.openInterest}</td>
+          <td>${safeNum(row.distancePct * 100)}%</td>
+          <td>${row.qualityScore}</td>
+        </tr>
+      `).join('');
     }
 
     function populateExpirations(rows) {
@@ -221,15 +364,82 @@
       });
     }
 
-    function refreshFilteredView() {
+    function filterContractsForEngine() {
       const exp = expirationSelect.value;
-      let filtered = fullOptionsData.filter(item => item.expiration === exp);
-      filtered.sort((a, b) => a.strike - b.strike);
+      const selectedType = optionTypeSelect.value;
+      const maxDistance = Number(distancePctSelect.value);
+
+      let filtered = fullOptionsData
+        .filter(item => item.expiration === exp)
+        .filter(item => item.side === selectedType)
+        .map(transformContract)
+        .filter(item => item.strike >= 10)
+        .filter(item => item.ask > 0 && item.bid > 0)
+        .filter(item => item.openInterest > 0)
+        .filter(item => item.mid >= 0.10)
+        .filter(item => item.spreadPct <= 0.35)
+        .filter(item => item.distancePct <= maxDistance);
+
+      if (currentStockPrice) {
+        if (selectedType === 'call') {
+          filtered = filtered.filter(item => item.strike >= currentStockPrice * 0.90);
+        } else if (selectedType === 'put') {
+          filtered = filtered.filter(item => item.strike <= currentStockPrice * 1.10);
+        }
+      }
+
+      filtered = filtered.map(item => ({
+        ...item,
+        qualityScore: computeQualityScore(item)
+      }));
+
+      filtered.sort((a, b) => {
+        if (b.qualityScore !== a.qualityScore) return b.qualityScore - a.qualityScore;
+        return a.distancePct - b.distancePct;
+      });
+
+      return filtered;
+    }
+
+    function updateRangeSummary(filtered) {
+      if (!filtered.length) {
+        premiumRangeEl.textContent = '--';
+        idealPremiumEl.textContent = '--';
+        contractsUsedEl.textContent = '0';
+        return;
+      }
+
+      const top = filtered.slice(0, 12);
+      const mids = top
+        .map(x => x.mid)
+        .filter(x => x > 0)
+        .sort((a, b) => a - b);
+
+      if (!mids.length) {
+        premiumRangeEl.textContent = '--';
+        idealPremiumEl.textContent = '--';
+        contractsUsedEl.textContent = String(top.length);
+        return;
+      }
+
+      const low = percentile(mids, 0.25);
+      const ideal = percentile(mids, 0.50);
+      const high = percentile(mids, 0.75);
+
+      premiumRangeEl.textContent = `$${safeNum(low)} - $${safeNum(high)}`;
+      idealPremiumEl.textContent = `$${safeNum(ideal)}`;
+      contractsUsedEl.textContent = String(top.length);
+    }
+
+    function refreshFilteredView() {
+      const filtered = filterContractsForEngine();
       renderTable(filtered);
+      updateRangeSummary(filtered);
     }
 
     expirationSelect.addEventListener('change', refreshFilteredView);
     optionTypeSelect.addEventListener('change', refreshFilteredView);
+    distancePctSelect.addEventListener('change', refreshFilteredView);
 
     [tickerInput, apiKeyInput].forEach(input => {
       input.addEventListener('keydown', (event) => {
@@ -238,6 +448,51 @@
         }
       });
     });
+
+    async function fetchStockQuote(ticker, token) {
+      const url = `https://api.marketdata.app/v1/stocks/quotes/${ticker}/?token=${encodeURIComponent(token)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!data || data.s === 'error' || !Array.isArray(data.last) || !data.last.length) {
+        throw new Error(`Stock quote error: ${JSON.stringify(data)}`);
+      }
+
+      currentStockPrice = Number(data.last[0] ?? 0);
+      stockPriceEl.textContent = currentStockPrice ? `$${safeNum(currentStockPrice)}` : '--';
+    }
+
+    async function fetchOptionsChain(ticker, token) {
+      const url = `https://api.marketdata.app/v1/options/chain/${ticker}/?token=${encodeURIComponent(token)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!data || !data.s || data.s === 'error') {
+        throw new Error(`Options chain error: ${JSON.stringify(data)}`);
+      }
+
+      const len = (data.optionSymbol || []).length;
+      fullOptionsData = [];
+
+      for (let i = 0; i < len; i++) {
+        const rawExpiration = data.expiration?.[i];
+        const expirationDate = rawExpiration
+          ? new Date(Number(rawExpiration) * 1000).toISOString().split('T')[0]
+          : '';
+
+        fullOptionsData.push({
+          optionSymbol: data.optionSymbol?.[i],
+          side: data.side?.[i] || '',
+          strike: Number(data.strike?.[i] ?? 0),
+          expiration: expirationDate,
+          bid: Number(data.bid?.[i] ?? 0),
+          ask: Number(data.ask?.[i] ?? 0),
+          last: Number(data.last?.[i] ?? 0),
+          volume: Number(data.volume?.[i] ?? 0),
+          openInterest: Number(data.openInterest?.[i] ?? 0)
+        });
+      }
+    }
 
     loadBtn.addEventListener('click', async () => {
       const ticker = tickerInput.value.trim().toUpperCase();
@@ -248,65 +503,26 @@
         return;
       }
 
-      statusDiv.textContent = 'Loading options data...';
-      tableBody.innerHTML = '<tr><td colspan="10">Loading...</td></tr>';
+      statusDiv.textContent = 'Loading stock price and options data...';
+      tableBody.innerHTML = '<tr><td colspan="13">Loading...</td></tr>';
       expirationSelect.innerHTML = '<option value="">Loading expirations...</option>';
+      stockPriceEl.textContent = '--';
+      premiumRangeEl.textContent = '--';
+      idealPremiumEl.textContent = '--';
+      contractsUsedEl.textContent = '--';
 
       try {
-        const url = `https://api.marketdata.app/v1/options/chain/${ticker}/?token=${encodeURIComponent(token)}`;
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (!data || !data.s || data.s === 'error') {
-          statusDiv.textContent = `API error: ${JSON.stringify(data)}`;
-          tableBody.innerHTML = '<tr><td colspan="10">API returned an error.</td></tr>';
-          expirationSelect.innerHTML = '<option value="">No expiration loaded yet</option>';
-          return;
-        }
-
-        const len = (data.optionSymbol || []).length;
-        fullOptionsData = [];
-
-        for (let i = 0; i < len; i++) {
-          const rawExpiration = data.expiration?.[i];
-          const expirationDate = rawExpiration
-            ? new Date(Number(rawExpiration) * 1000).toISOString().split('T')[0]
-            : '';
-
-          const strike = Number(data.strike?.[i] ?? 0);
-          const bid = Number(data.bid?.[i] ?? 0);
-          const ask = Number(data.ask?.[i] ?? 0);
-          const last = Number(data.last?.[i] ?? 0);
-          const volume = Number(data.volume?.[i] ?? 0);
-          const openInterest = Number(data.openInterest?.[i] ?? 0);
-          const side = data.side?.[i] || '';
-
-          if (strike < 10) continue;
-          if (ask <= 0) continue;
-          if (bid <= 0) continue;
-          if (openInterest <= 0) continue;
-
-          fullOptionsData.push({
-            optionSymbol: data.optionSymbol?.[i],
-            side,
-            strike,
-            expiration: expirationDate,
-            bid,
-            ask,
-            last,
-            volume,
-            openInterest
-          });
-        }
+        await fetchStockQuote(ticker, token);
+        await fetchOptionsChain(ticker, token);
 
         populateExpirations(fullOptionsData);
         refreshFilteredView();
 
-        statusDiv.textContent = `Loaded ${fullOptionsData.length} filtered contracts for ${ticker}.`;
+        statusDiv.textContent = `Loaded quote + ${fullOptionsData.length} raw contracts for ${ticker}.`;
       } catch (error) {
         console.error(error);
         statusDiv.textContent = `Error loading data: ${error.message}`;
-        tableBody.innerHTML = '<tr><td colspan="10">Error loading data.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="13">Error loading data.</td></tr>';
         expirationSelect.innerHTML = '<option value="">No expiration loaded yet</option>';
       }
     });
