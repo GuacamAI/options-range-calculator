@@ -3,529 +3,1036 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Options Range Calculator</title>
+  <title>Options Range Calculator - Version 5</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 24px;
-      background: #f5f7fb;
-      color: #1f2937;
+    :root{
+      --bg:#0b1020;
+      --panel:#131a2e;
+      --panel-2:#1a2340;
+      --muted:#9fb0d0;
+      --text:#eef4ff;
+      --accent:#5aa9ff;
+      --accent-2:#7af0c3;
+      --danger:#ff7b7b;
+      --warning:#ffc857;
+      --border:#2b365d;
+      --good:#3ddc97;
+      --shadow:0 10px 30px rgba(0,0,0,.28);
     }
 
-    .container {
-      max-width: 1250px;
-      margin: 0 auto;
-      background: white;
-      padding: 24px;
-      border-radius: 14px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#09101d 0%, #0d1326 100%);
+      color:var(--text);
+      font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;
+      line-height:1.35;
     }
 
-    h1 {
-      margin-top: 0;
-      margin-bottom: 8px;
+    .container{
+      max-width:1400px;
+      margin:24px auto;
+      padding:0 18px 40px;
     }
 
-    .small {
-      color: #6b7280;
-      font-size: 13px;
+    .title{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:12px;
+      margin-bottom:18px;
     }
 
-    .row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-      align-items: center;
+    .title h1{
+      margin:0;
+      font-size:28px;
+      letter-spacing:.2px;
     }
 
-    input, button, select {
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #d1d5db;
-      font-size: 14px;
+    .badge{
+      background:rgba(90,169,255,.14);
+      color:#cde4ff;
+      border:1px solid rgba(90,169,255,.35);
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:600;
     }
 
-    input {
-      min-width: 220px;
+    .grid{
+      display:grid;
+      grid-template-columns:380px 1fr;
+      gap:18px;
     }
 
-    button {
-      background: #111827;
-      color: white;
-      cursor: pointer;
-      border: none;
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:16px;
+      box-shadow:var(--shadow);
     }
 
-    button:hover {
-      opacity: 0.92;
+    .panel h2{
+      margin:0 0 12px;
+      font-size:18px;
     }
 
-    .status {
-      margin: 12px 0 20px;
-      font-size: 14px;
-      white-space: pre-wrap;
+    .subtle{
+      color:var(--muted);
+      font-size:13px;
     }
 
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-      margin: 12px 0 20px;
+    .form-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
     }
 
-    .card {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 12px;
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
     }
 
-    .card-label {
-      font-size: 12px;
-      color: #6b7280;
-      margin-bottom: 6px;
+    .field.full{grid-column:1 / -1}
+
+    label{
+      font-size:13px;
+      color:#dce8ff;
+      font-weight:600;
     }
 
-    .card-value {
-      font-size: 20px;
-      font-weight: bold;
+    input, select, textarea, button{
+      font:inherit;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
-      font-size: 14px;
+    input, select, textarea{
+      width:100%;
+      background:var(--panel-2);
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:11px 12px;
+      outline:none;
     }
 
-    th, td {
-      border: 1px solid #e5e7eb;
-      padding: 10px;
-      text-align: left;
+    textarea{
+      min-height:190px;
+      resize:vertical;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:12px;
     }
 
-    th {
-      background: #f3f4f6;
+    input:focus, select:focus, textarea:focus{
+      border-color:var(--accent);
+      box-shadow:0 0 0 3px rgba(90,169,255,.12);
     }
 
-    .note {
-      margin-top: 20px;
-      padding: 12px;
-      background: #eef2ff;
-      border-radius: 8px;
-      font-size: 13px;
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:14px;
     }
 
-    .pill {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: #e5e7eb;
-      font-size: 12px;
-      margin-left: 8px;
+    button{
+      border:none;
+      border-radius:12px;
+      padding:11px 14px;
+      cursor:pointer;
+      font-weight:700;
+      transition:.18s ease;
     }
 
-    .good {
-      color: #065f46;
+    .btn-primary{
+      background:linear-gradient(135deg,var(--accent),#7e8cff);
+      color:white;
     }
 
-    .warn {
-      color: #92400e;
+    .btn-secondary{
+      background:#233056;
+      color:#dfe8ff;
+      border:1px solid #31416e;
     }
 
-    .mono {
-      font-family: Consolas, Monaco, monospace;
+    .btn-primary:hover,.btn-secondary:hover{
+      transform:translateY(-1px);
+      filter:brightness(1.04);
+    }
+
+    .summary{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(170px, 1fr));
+      gap:12px;
+      margin-bottom:16px;
+    }
+
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:14px;
+      box-shadow:var(--shadow);
+    }
+
+    .card .k{
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:4px;
+    }
+
+    .card .v{
+      font-size:24px;
+      font-weight:800;
+    }
+
+    .card .s{
+      font-size:12px;
+      color:#cfdaf5;
+      margin-top:5px;
+    }
+
+    .metrics{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(180px, 1fr));
+      gap:12px;
+      margin-top:14px;
+    }
+
+    .metric{
+      background:#10182f;
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px;
+    }
+
+    .metric .label{
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+
+    .metric .value{
+      font-size:19px;
+      font-weight:800;
+    }
+
+    .metric .desc{
+      font-size:12px;
+      color:#c5d4f3;
+      margin-top:4px;
+    }
+
+    .range-bar-wrap{
+      margin-top:14px;
+      background:#10182f;
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+    }
+
+    .range-bar{
+      position:relative;
+      height:16px;
+      background:#202c50;
+      border-radius:999px;
+      overflow:hidden;
+      margin:10px 0 8px;
+    }
+
+    .range-fill{
+      position:absolute;
+      top:0;
+      bottom:0;
+      background:linear-gradient(90deg,#2f7fff,#56d9c1);
+      border-radius:999px;
+    }
+
+    .range-ideal{
+      position:absolute;
+      top:-5px;
+      width:3px;
+      height:26px;
+      background:#fff;
+      box-shadow:0 0 0 2px rgba(255,255,255,.15);
+    }
+
+    .range-labels{
+      display:flex;
+      justify-content:space-between;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .table-wrap{
+      overflow:auto;
+      border:1px solid var(--border);
+      border-radius:16px;
+      margin-top:14px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:1100px;
+      background:var(--panel);
+    }
+
+    th, td{
+      padding:10px 10px;
+      border-bottom:1px solid #243154;
+      text-align:right;
+      font-size:13px;
+      white-space:nowrap;
+    }
+
+    th{
+      position:sticky;
+      top:0;
+      background:#172142;
+      color:#dce8ff;
+      z-index:1;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+
+    td:first-child, th:first-child,
+    td:nth-child(2), th:nth-child(2),
+    td:nth-child(3), th:nth-child(3){
+      text-align:left;
+    }
+
+    tr:hover td{
+      background:#111a34;
+    }
+
+    .pill{
+      display:inline-block;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:700;
+      border:1px solid transparent;
+    }
+
+    .pill-good{
+      color:#dffcf0;
+      background:rgba(61,220,151,.13);
+      border-color:rgba(61,220,151,.3);
+    }
+
+    .pill-warn{
+      color:#fff1d1;
+      background:rgba(255,200,87,.12);
+      border-color:rgba(255,200,87,.35);
+    }
+
+    .pill-bad{
+      color:#ffd6d6;
+      background:rgba(255,123,123,.13);
+      border-color:rgba(255,123,123,.28);
+    }
+
+    .small{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .footer-note{
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:#0f1831;
+      border:1px solid var(--border);
+      color:#d3def9;
+      font-size:13px;
+    }
+
+    .mono{
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+
+    @media (max-width: 1100px){
+      .grid{
+        grid-template-columns:1fr;
+      }
+      .summary{
+        grid-template-columns:1fr 1fr;
+      }
+      .metrics{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width: 700px){
+      .form-grid{
+        grid-template-columns:1fr;
+      }
+      .summary{
+        grid-template-columns:1fr;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Options Range Calculator</h1>
-    <p class="small">Version 4: quote + option chain + basic optimal premium range engine.</p>
-
-    <div class="row">
-      <input id="apiKey" type="password" placeholder="Paste MarketData Token" />
-      <input id="ticker" type="text" placeholder="Ticker (e.g. NFLX)" value="NFLX" />
-      <button id="loadBtn">Load Options</button>
+    <div class="title">
+      <h1>Options Range Calculator</h1>
+      <span class="badge">Version 5</span>
+      <span class="badge">Premium Floor/Ceiling + Refined Score + Uniformity</span>
     </div>
 
-    <div class="status" id="status">Waiting for input...</div>
+    <div class="grid">
+      <div class="panel">
+        <h2>Inputs</h2>
+        <div class="subtle">Paste your option chain in CSV format. The engine filters contracts, scores them, then estimates a suggested premium range and ideal premium.</div>
 
-    <div class="summary-grid">
-      <div class="card">
-        <div class="card-label">Current Stock Price</div>
-        <div class="card-value" id="stockPrice">--</div>
+        <div class="form-grid" style="margin-top:14px;">
+          <div class="field">
+            <label for="ticker">Ticker</label>
+            <input id="ticker" value="NFLX" />
+          </div>
+
+          <div class="field">
+            <label for="stockPrice">Current Stock Price</label>
+            <input id="stockPrice" type="number" step="0.01" value="99.17" />
+          </div>
+
+          <div class="field">
+            <label for="expiration">Expiration</label>
+            <input id="expiration" type="date" value="2026-03-20" />
+          </div>
+
+          <div class="field">
+            <label for="optionType">Type</label>
+            <select id="optionType">
+              <option value="call" selected>Calls</option>
+              <option value="put">Puts</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="strikeDistancePct">Max Strike Distance %</label>
+            <input id="strikeDistancePct" type="number" step="0.1" value="10" />
+          </div>
+
+          <div class="field">
+            <label for="topContracts">Top Contracts Used</label>
+            <input id="topContracts" type="number" step="1" value="12" />
+          </div>
+
+          <div class="field">
+            <label for="premiumMin">Minimum Premium</label>
+            <input id="premiumMin" type="number" step="0.01" value="1.00" />
+          </div>
+
+          <div class="field">
+            <label for="premiumMax">Maximum Premium</label>
+            <input id="premiumMax" type="number" step="0.01" value="5.00" />
+          </div>
+
+          <div class="field">
+            <label for="minVolume">Minimum Volume</label>
+            <input id="minVolume" type="number" step="1" value="50" />
+          </div>
+
+          <div class="field">
+            <label for="minOI">Minimum Open Interest</label>
+            <input id="minOI" type="number" step="1" value="100" />
+          </div>
+
+          <div class="field">
+            <label for="maxSpreadPct">Max Spread %</label>
+            <input id="maxSpreadPct" type="number" step="0.1" value="12" />
+          </div>
+
+          <div class="field">
+            <label for="scoreMin">Minimum Quality Score</label>
+            <input id="scoreMin" type="number" step="1" value="35" />
+          </div>
+
+          <div class="field full">
+            <label for="csvInput">Option Chain CSV</label>
+            <textarea id="csvInput" spellcheck="false">type,strike,expiration,bid,ask,last,volume,openInterest
+call,95,2026-03-20,5.55,5.75,5.60,1800,9200
+call,96,2026-03-20,4.95,5.10,5.02,1500,8400
+call,97,2026-03-20,4.35,4.48,4.40,1700,12000
+call,98,2026-03-20,3.65,3.78,3.70,1900,13800
+call,99,2026-03-20,2.86,2.97,2.92,1033,8091
+call,100,2026-03-20,2.35,2.44,2.40,9202,48094
+call,101,2026-03-20,1.95,2.04,2.00,4100,25000
+call,102,2026-03-20,1.62,1.71,1.66,3800,20200
+call,103,2026-03-20,1.32,1.40,1.36,3300,18100
+call,104,2026-03-20,1.07,1.15,1.11,2600,14000
+call,105,2026-03-20,0.88,0.96,0.92,2400,12200
+call,106,2026-03-20,0.72,0.81,0.76,2200,11300
+put,99,2026-03-20,2.71,2.82,2.75,900,7800
+put,98,2026-03-20,2.28,2.37,2.32,1300,9600
+put,97,2026-03-20,1.90,1.98,1.94,2100,14500</textarea>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn-primary" id="analyzeBtn">Analyze</button>
+          <button class="btn-secondary" id="loadSampleBtn">Load Sample</button>
+          <button class="btn-secondary" id="clearBtn">Clear Table</button>
+        </div>
+
+        <div class="footer-note" style="margin-top:16px;">
+          <strong>CSV columns expected:</strong><br>
+          <span class="mono">type,strike,expiration,bid,ask,last,volume,openInterest</span><br><br>
+          You can add more rows freely. The engine calculates:
+          spread %, distance %, refined score, premium fit score, and a first-pass uniformity measure.
+        </div>
       </div>
-      <div class="card">
-        <div class="card-label">Suggested Premium Range</div>
-        <div class="card-value" id="premiumRange">--</div>
+
+      <div>
+        <div class="summary">
+          <div class="card">
+            <div class="k">Current Stock Price</div>
+            <div class="v" id="stockPriceCard">$--</div>
+            <div class="s">Reference price used for distance calculations</div>
+          </div>
+          <div class="card">
+            <div class="k">Suggested Premium Range</div>
+            <div class="v" id="premiumRangeCard">$-- - $--</div>
+            <div class="s">Weighted band from the best contracts</div>
+          </div>
+          <div class="card">
+            <div class="k">Suggested Ideal Premium</div>
+            <div class="v" id="idealPremiumCard">$--</div>
+            <div class="s">Weighted center, adjusted by uniformity</div>
+          </div>
+          <div class="card">
+            <div class="k">Top Contracts Used</div>
+            <div class="v" id="contractsUsedCard">0</div>
+            <div class="s">Contracts surviving filters and final rank</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Result Overview</h2>
+          <div class="subtle">This version gives more weight to tradability, premium quality, and consistency among the best contracts.</div>
+
+          <div class="metrics">
+            <div class="metric">
+              <div class="label">Average Refined Score</div>
+              <div class="value" id="avgScoreMetric">--</div>
+              <div class="desc">Mean of final contracts after ranking</div>
+            </div>
+
+            <div class="metric">
+              <div class="label">Uniformity Score</div>
+              <div class="value" id="uniformityMetric">--</div>
+              <div class="desc">How tightly clustered the selected mids are</div>
+            </div>
+
+            <div class="metric">
+              <div class="label">Average Spread %</div>
+              <div class="value" id="spreadMetric">--</div>
+              <div class="desc">Lower is cleaner and easier to execute</div>
+            </div>
+          </div>
+
+          <div class="range-bar-wrap">
+            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <div><strong>Premium Distribution View</strong></div>
+              <div class="small" id="rangeContext">Awaiting analysis...</div>
+            </div>
+
+            <div class="range-bar" id="rangeBar">
+              <div class="range-fill" id="rangeFill" style="left:0%;width:0%;"></div>
+              <div class="range-ideal" id="rangeIdeal" style="left:0%;"></div>
+            </div>
+            <div class="range-labels" id="rangeLabels">
+              <span>$0.00</span>
+              <span>$0.00</span>
+            </div>
+          </div>
+
+          <div class="footer-note" id="explanationBox">
+            <strong>How the refined score works:</strong><br>
+            The model rewards <strong>tight spreads</strong>, <strong>higher volume</strong>, <strong>higher open interest</strong>, <strong>reasonable strike distance</strong>, and <strong>premiums inside your preferred band</strong>. Then it checks <strong>uniformity</strong>: if the best contracts cluster around a similar premium, confidence rises; if premiums are scattered, confidence falls.
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Strike</th>
+                  <th>Expiration</th>
+                  <th>Bid</th>
+                  <th>Ask</th>
+                  <th>Mid</th>
+                  <th>Spread</th>
+                  <th>Spread %</th>
+                  <th>Last</th>
+                  <th>Volume</th>
+                  <th>Open Interest</th>
+                  <th>Distance %</th>
+                  <th>Premium Fit</th>
+                  <th>Liquidity</th>
+                  <th>Tradability</th>
+                  <th>Refined Score</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="resultsTableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="footer-note" id="statusBox">
+            Ready. Paste a chain and click <strong>Analyze</strong>.
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-label">Suggested Ideal Premium</div>
-        <div class="card-value" id="idealPremium">--</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Top Contracts Used</div>
-        <div class="card-value" id="contractsUsed">--</div>
-      </div>
-    </div>
-
-    <div class="row">
-      <label for="expiration"><strong>Expiration:</strong></label>
-      <select id="expiration">
-        <option value="">No expiration loaded yet</option>
-      </select>
-
-      <label for="optionType"><strong>Type:</strong></label>
-      <select id="optionType">
-        <option value="call">Calls</option>
-        <option value="put">Puts</option>
-      </select>
-
-      <label for="distancePct"><strong>Strike Distance %:</strong></label>
-      <select id="distancePct">
-        <option value="0.08">8%</option>
-        <option value="0.10" selected>10%</option>
-        <option value="0.12">12%</option>
-        <option value="0.15">15%</option>
-      </select>
-    </div>
-
-    <table id="resultsTable">
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Strike</th>
-          <th>Expiration</th>
-          <th>Bid</th>
-          <th>Ask</th>
-          <th>Mid</th>
-          <th>Spread</th>
-          <th>Spread %</th>
-          <th>Last</th>
-          <th>Volume</th>
-          <th>Open Interest</th>
-          <th>Distance %</th>
-          <th>Quality Score</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td colspan="13">No data yet.</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="note">
-      This v1 engine favors contracts near the underlying price with reasonable bid/ask spread and liquidity. We will refine the exact “Yoel logic” after testing.
     </div>
   </div>
 
   <script>
-    const loadBtn = document.getElementById('loadBtn');
-    const tickerInput = document.getElementById('ticker');
-    const apiKeyInput = document.getElementById('apiKey');
-    const expirationSelect = document.getElementById('expiration');
-    const optionTypeSelect = document.getElementById('optionType');
-    const distancePctSelect = document.getElementById('distancePct');
-    const statusDiv = document.getElementById('status');
-    const tableBody = document.querySelector('#resultsTable tbody');
+    const $ = (id) => document.getElementById(id);
 
-    const stockPriceEl = document.getElementById('stockPrice');
-    const premiumRangeEl = document.getElementById('premiumRange');
-    const idealPremiumEl = document.getElementById('idealPremium');
-    const contractsUsedEl = document.getElementById('contractsUsed');
+    const els = {
+      ticker: $("ticker"),
+      stockPrice: $("stockPrice"),
+      expiration: $("expiration"),
+      optionType: $("optionType"),
+      strikeDistancePct: $("strikeDistancePct"),
+      topContracts: $("topContracts"),
+      premiumMin: $("premiumMin"),
+      premiumMax: $("premiumMax"),
+      minVolume: $("minVolume"),
+      minOI: $("minOI"),
+      maxSpreadPct: $("maxSpreadPct"),
+      scoreMin: $("scoreMin"),
+      csvInput: $("csvInput"),
+      analyzeBtn: $("analyzeBtn"),
+      loadSampleBtn: $("loadSampleBtn"),
+      clearBtn: $("clearBtn"),
+      stockPriceCard: $("stockPriceCard"),
+      premiumRangeCard: $("premiumRangeCard"),
+      idealPremiumCard: $("idealPremiumCard"),
+      contractsUsedCard: $("contractsUsedCard"),
+      avgScoreMetric: $("avgScoreMetric"),
+      uniformityMetric: $("uniformityMetric"),
+      spreadMetric: $("spreadMetric"),
+      rangeContext: $("rangeContext"),
+      rangeFill: $("rangeFill"),
+      rangeIdeal: $("rangeIdeal"),
+      rangeLabels: $("rangeLabels"),
+      resultsTableBody: $("resultsTableBody"),
+      statusBox: $("statusBox")
+    };
 
-    let fullOptionsData = [];
-    let currentStockPrice = null;
+    const sampleCSV = `type,strike,expiration,bid,ask,last,volume,openInterest
+call,95,2026-03-20,5.55,5.75,5.60,1800,9200
+call,96,2026-03-20,4.95,5.10,5.02,1500,8400
+call,97,2026-03-20,4.35,4.48,4.40,1700,12000
+call,98,2026-03-20,3.65,3.78,3.70,1900,13800
+call,99,2026-03-20,2.86,2.97,2.92,1033,8091
+call,100,2026-03-20,2.35,2.44,2.40,9202,48094
+call,101,2026-03-20,1.95,2.04,2.00,4100,25000
+call,102,2026-03-20,1.62,1.71,1.66,3800,20200
+call,103,2026-03-20,1.32,1.40,1.36,3300,18100
+call,104,2026-03-20,1.07,1.15,1.11,2600,14000
+call,105,2026-03-20,0.88,0.96,0.92,2400,12200
+call,106,2026-03-20,0.72,0.81,0.76,2200,11300
+put,99,2026-03-20,2.71,2.82,2.75,900,7800
+put,98,2026-03-20,2.28,2.37,2.32,1300,9600
+put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
 
-    function safeNum(value, decimals = 2) {
-      return value === null || value === undefined || value === '' || Number.isNaN(Number(value))
-        ? ''
-        : Number(value).toFixed(decimals);
+    function fmtMoney(n){
+      if (!isFinite(n)) return "$--";
+      return "$" + Number(n).toFixed(2);
     }
 
-    function percentile(sortedArr, p) {
-      if (!sortedArr.length) return null;
-      const index = (sortedArr.length - 1) * p;
-      const lower = Math.floor(index);
-      const upper = Math.ceil(index);
-      if (lower === upper) return sortedArr[lower];
-      return sortedArr[lower] + (sortedArr[upper] - sortedArr[lower]) * (index - lower);
+    function fmtPct(n){
+      if (!isFinite(n)) return "--";
+      return Number(n).toFixed(2) + "%";
     }
 
-    function computeQualityScore(contract) {
-      const mid = contract.mid;
-      const spread = contract.spread;
-      const spreadPct = contract.spreadPct;
-      const oi = contract.openInterest;
-      const volume = contract.volume;
-      const distancePct = contract.distancePct;
-
-      let score = 0;
-
-      if (mid >= 0.2 && mid <= 15) score += 2;
-      if (mid >= 0.5 && mid <= 8) score += 1;
-
-      if (spreadPct <= 0.10) score += 3;
-      else if (spreadPct <= 0.15) score += 2;
-      else if (spreadPct <= 0.25) score += 1;
-
-      if (oi >= 500) score += 3;
-      else if (oi >= 100) score += 2;
-      else if (oi >= 25) score += 1;
-
-      if (volume >= 200) score += 2;
-      else if (volume >= 50) score += 1;
-
-      if (distancePct <= 0.03) score += 3;
-      else if (distancePct <= 0.06) score += 2;
-      else if (distancePct <= 0.10) score += 1;
-
-      return score;
+    function clamp(v, min, max){
+      return Math.max(min, Math.min(max, v));
     }
 
-    function transformContract(raw) {
-      const bid = Number(raw.bid || 0);
-      const ask = Number(raw.ask || 0);
-      const strike = Number(raw.strike || 0);
-      const volume = Number(raw.volume || 0);
-      const openInterest = Number(raw.openInterest || 0);
-      const last = Number(raw.last || 0);
-      const side = raw.side || '';
+    function parseCSV(text){
+      const lines = text.trim().split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) return [];
 
-      const mid = (bid > 0 && ask > 0) ? (bid + ask) / 2 : 0;
-      const spread = (bid > 0 && ask > 0) ? (ask - bid) : 0;
-      const spreadPct = (mid > 0) ? (spread / mid) : 999;
+      const headers = lines[0].split(",").map(h => h.trim());
+      return lines.slice(1).map(line => {
+        const cols = splitCSVLine(line);
+        const row = {};
+        headers.forEach((h, i) => row[h] = (cols[i] ?? "").trim());
 
-      let distancePct = 999;
-      if (currentStockPrice && strike > 0) {
-        distancePct = Math.abs(strike - currentStockPrice) / currentStockPrice;
-      }
-
-      return {
-        ...raw,
-        bid,
-        ask,
-        strike,
-        volume,
-        openInterest,
-        last,
-        side,
-        mid,
-        spread,
-        spreadPct,
-        distancePct,
-        qualityScore: 0
-      };
+        return {
+          type: (row.type || "").toLowerCase(),
+          strike: parseFloat(row.strike),
+          expiration: row.expiration,
+          bid: parseFloat(row.bid),
+          ask: parseFloat(row.ask),
+          last: parseFloat(row.last),
+          volume: parseFloat(row.volume),
+          openInterest: parseFloat(row.openInterest)
+        };
+      }).filter(r =>
+        ["call","put"].includes(r.type) &&
+        isFinite(r.strike) &&
+        isFinite(r.bid) &&
+        isFinite(r.ask) &&
+        r.expiration
+      );
     }
 
-    function renderTable(rows) {
-      if (!rows || rows.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="13">No options found for this selection.</td></tr>';
-        return;
-      }
+    function splitCSVLine(line){
+      const out = [];
+      let current = "";
+      let inQuotes = false;
 
-      tableBody.innerHTML = rows.slice(0, 150).map(row => `
-        <tr>
-          <td>${row.side || ''}</td>
-          <td>${safeNum(row.strike)}</td>
-          <td>${row.expiration || ''}</td>
-          <td>${safeNum(row.bid)}</td>
-          <td>${safeNum(row.ask)}</td>
-          <td>${safeNum(row.mid)}</td>
-          <td>${safeNum(row.spread)}</td>
-          <td>${safeNum(row.spreadPct * 100)}%</td>
-          <td>${safeNum(row.last)}</td>
-          <td>${row.volume}</td>
-          <td>${row.openInterest}</td>
-          <td>${safeNum(row.distancePct * 100)}%</td>
-          <td>${row.qualityScore}</td>
-        </tr>
-      `).join('');
-    }
-
-    function populateExpirations(rows) {
-      const expirations = [...new Set(rows.map(r => r.expiration).filter(Boolean))].sort();
-      expirationSelect.innerHTML = '';
-
-      if (expirations.length === 0) {
-        expirationSelect.innerHTML = '<option value="">No expirations found</option>';
-        return;
-      }
-
-      expirations.forEach(exp => {
-        const option = document.createElement('option');
-        option.value = exp;
-        option.textContent = exp;
-        expirationSelect.appendChild(option);
-      });
-    }
-
-    function filterContractsForEngine() {
-      const exp = expirationSelect.value;
-      const selectedType = optionTypeSelect.value;
-      const maxDistance = Number(distancePctSelect.value);
-
-      let filtered = fullOptionsData
-        .filter(item => item.expiration === exp)
-        .filter(item => item.side === selectedType)
-        .map(transformContract)
-        .filter(item => item.strike >= 10)
-        .filter(item => item.ask > 0 && item.bid > 0)
-        .filter(item => item.openInterest > 0)
-        .filter(item => item.mid >= 0.10)
-        .filter(item => item.spreadPct <= 0.35)
-        .filter(item => item.distancePct <= maxDistance);
-
-      if (currentStockPrice) {
-        if (selectedType === 'call') {
-          filtered = filtered.filter(item => item.strike >= currentStockPrice * 0.90);
-        } else if (selectedType === 'put') {
-          filtered = filtered.filter(item => item.strike <= currentStockPrice * 1.10);
+      for (let i = 0; i < line.length; i++){
+        const ch = line[i];
+        if (ch === '"'){
+          inQuotes = !inQuotes;
+        } else if (ch === "," && !inQuotes){
+          out.push(current);
+          current = "";
+        } else {
+          current += ch;
         }
       }
+      out.push(current);
+      return out;
+    }
 
-      filtered = filtered.map(item => ({
-        ...item,
-        qualityScore: computeQualityScore(item)
-      }));
+    function scoreSpread(spreadPct, maxSpreadPct){
+      if (!isFinite(spreadPct)) return 0;
+      if (spreadPct <= 2) return 100;
+      if (spreadPct >= maxSpreadPct * 1.8) return 0;
+      return clamp(100 - ((spreadPct - 2) / Math.max(1, (maxSpreadPct * 1.8 - 2))) * 100, 0, 100);
+    }
 
-      filtered.sort((a, b) => {
-        if (b.qualityScore !== a.qualityScore) return b.qualityScore - a.qualityScore;
-        return a.distancePct - b.distancePct;
+    function scoreVolume(volume, minVolume){
+      if (!isFinite(volume) || volume <= 0) return 0;
+      if (volume >= minVolume * 20) return 100;
+      return clamp((Math.log10(volume + 1) / Math.log10(minVolume * 20 + 1)) * 100, 0, 100);
+    }
+
+    function scoreOI(oi, minOI){
+      if (!isFinite(oi) || oi <= 0) return 0;
+      if (oi >= minOI * 30) return 100;
+      return clamp((Math.log10(oi + 1) / Math.log10(minOI * 30 + 1)) * 100, 0, 100);
+    }
+
+    function scoreDistance(distancePct, maxDistancePct){
+      if (!isFinite(distancePct)) return 0;
+      if (distancePct <= maxDistancePct * 0.25) return 100;
+      if (distancePct >= maxDistancePct * 1.3) return 0;
+      return clamp(100 - ((distancePct - maxDistancePct * 0.25) / Math.max(0.0001, maxDistancePct * 1.05)) * 100, 0, 100);
+    }
+
+    function scorePremiumFit(mid, premiumMin, premiumMax){
+      if (!isFinite(mid) || mid <= 0) return 0;
+
+      if (mid >= premiumMin && mid <= premiumMax) {
+        const center = (premiumMin + premiumMax) / 2;
+        const halfRange = Math.max(0.01, (premiumMax - premiumMin) / 2);
+        const distFromCenter = Math.abs(mid - center);
+        return clamp(100 - (distFromCenter / halfRange) * 18, 82, 100);
+      }
+
+      if (mid < premiumMin){
+        const gap = premiumMin - mid;
+        const tolerance = Math.max(0.25, premiumMin * 0.7);
+        return clamp(82 - (gap / tolerance) * 82, 0, 82);
+      }
+
+      const gap = mid - premiumMax;
+      const tolerance = Math.max(0.5, premiumMax * 0.8);
+      return clamp(82 - (gap / tolerance) * 82, 0, 82);
+    }
+
+    function weightedPercentile(values, weights, p){
+      if (!values.length) return NaN;
+      const items = values.map((v, i) => ({v, w: Math.max(0, weights[i] || 0)}))
+        .sort((a,b) => a.v - b.v);
+
+      const totalWeight = items.reduce((s, x) => s + x.w, 0);
+      if (totalWeight <= 0) return items[Math.floor((items.length - 1) * p)].v;
+
+      let cumulative = 0;
+      const threshold = totalWeight * p;
+
+      for (const item of items){
+        cumulative += item.w;
+        if (cumulative >= threshold) return item.v;
+      }
+      return items[items.length - 1].v;
+    }
+
+    function average(arr){
+      if (!arr.length) return NaN;
+      return arr.reduce((a,b)=>a+b,0)/arr.length;
+    }
+
+    function stdDev(arr){
+      if (arr.length < 2) return 0;
+      const avg = average(arr);
+      const variance = average(arr.map(x => (x - avg) ** 2));
+      return Math.sqrt(variance);
+    }
+
+    function getStatusPill(score){
+      if (score >= 75) return '<span class="pill pill-good">Strong</span>';
+      if (score >= 55) return '<span class="pill pill-warn">Usable</span>';
+      return '<span class="pill pill-bad">Weak</span>';
+    }
+
+    function analyze(){
+      const ticker = els.ticker.value.trim().toUpperCase() || "N/A";
+      const stockPrice = parseFloat(els.stockPrice.value);
+      const expiration = els.expiration.value;
+      const optionType = els.optionType.value;
+      const strikeDistancePct = parseFloat(els.strikeDistancePct.value);
+      const topContracts = Math.max(1, parseInt(els.topContracts.value || "12", 10));
+      const premiumMin = parseFloat(els.premiumMin.value);
+      const premiumMax = parseFloat(els.premiumMax.value);
+      const minVolume = parseFloat(els.minVolume.value);
+      const minOI = parseFloat(els.minOI.value);
+      const maxSpreadPct = parseFloat(els.maxSpreadPct.value);
+      const scoreMin = parseFloat(els.scoreMin.value);
+
+      if (!isFinite(stockPrice) || stockPrice <= 0){
+        els.statusBox.innerHTML = "Invalid stock price.";
+        return;
+      }
+
+      if (!isFinite(premiumMin) || !isFinite(premiumMax) || premiumMin < 0 || premiumMax <= premiumMin){
+        els.statusBox.innerHTML = "Invalid premium range. Maximum premium must be greater than minimum premium.";
+        return;
+      }
+
+      const rows = parseCSV(els.csvInput.value);
+      if (!rows.length){
+        els.statusBox.innerHTML = "No valid contracts found in the CSV input.";
+        clearTable();
+        return;
+      }
+
+      const filteredTypeExpiry = rows.filter(r => r.type === optionType && r.expiration === expiration);
+
+      if (!filteredTypeExpiry.length){
+        els.statusBox.innerHTML = `No ${optionType.toUpperCase()} contracts found for expiration ${expiration}.`;
+        clearTable();
+        return;
+      }
+
+      const scored = filteredTypeExpiry.map(r => {
+        const mid = (r.bid + r.ask) / 2;
+        const spread = r.ask - r.bid;
+        const spreadPct = mid > 0 ? (spread / mid) * 100 : 9999;
+        const distancePct = Math.abs((r.strike - stockPrice) / stockPrice) * 100;
+
+        const premiumFit = scorePremiumFit(mid, premiumMin, premiumMax);
+        const spreadScore = scoreSpread(spreadPct, maxSpreadPct);
+        const volumeScore = scoreVolume(r.volume, minVolume);
+        const oiScore = scoreOI(r.openInterest, minOI);
+        const distanceScore = scoreDistance(distancePct, strikeDistancePct);
+
+        const liquidityScore = (volumeScore * 0.45) + (oiScore * 0.55);
+        const tradabilityScore = (spreadScore * 0.65) + (liquidityScore * 0.35);
+
+        const refinedScore =
+          (tradabilityScore * 0.34) +
+          (premiumFit * 0.26) +
+          (distanceScore * 0.20) +
+          (volumeScore * 0.10) +
+          (oiScore * 0.10);
+
+        const passesBase =
+          distancePct <= strikeDistancePct &&
+          r.volume >= minVolume &&
+          r.openInterest >= minOI &&
+          spreadPct <= maxSpreadPct * 1.35;
+
+        return {
+          ...r,
+          ticker,
+          mid,
+          spread,
+          spreadPct,
+          distancePct,
+          premiumFit,
+          spreadScore,
+          volumeScore,
+          oiScore,
+          distanceScore,
+          liquidityScore,
+          tradabilityScore,
+          refinedScore,
+          passesBase
+        };
       });
 
-      return filtered;
-    }
+      const surviving = scored
+        .filter(r => r.passesBase)
+        .sort((a,b) => b.refinedScore - a.refinedScore);
 
-    function updateRangeSummary(filtered) {
-      if (!filtered.length) {
-        premiumRangeEl.textContent = '--';
-        idealPremiumEl.textContent = '--';
-        contractsUsedEl.textContent = '0';
+      const selected = surviving.filter(r => r.refinedScore >= scoreMin).slice(0, topContracts);
+
+      const finalContracts = selected.length ? selected : surviving.slice(0, topContracts);
+
+      if (!finalContracts.length){
+        els.statusBox.innerHTML = "No contracts passed the current filters. Loosen the minimums or widen the spread / distance limits.";
+        clearTable();
         return;
       }
 
-      const top = filtered.slice(0, 12);
-      const mids = top
-        .map(x => x.mid)
-        .filter(x => x > 0)
-        .sort((a, b) => a - b);
+      const mids = finalContracts.map(r => r.mid);
+      const scores = finalContracts.map(r => r.refinedScore);
+      const spreads = finalContracts.map(r => r.spreadPct);
+      const weights = finalContracts.map(r => Math.max(1, r.refinedScore));
 
-      if (!mids.length) {
-        premiumRangeEl.textContent = '--';
-        idealPremiumEl.textContent = '--';
-        contractsUsedEl.textContent = String(top.length);
-        return;
+      const avgMid = average(mids);
+      const sdMid = stdDev(mids);
+      const cv = avgMid > 0 ? (sdMid / avgMid) * 100 : 999;
+      const uniformityScore = clamp(100 - (cv * 12), 0, 100);
+
+      let suggestedMin = weightedPercentile(mids, weights, 0.20);
+      let suggestedMax = weightedPercentile(mids, weights, 0.80);
+      let suggestedIdeal = finalContracts.reduce((sum, r, i) => sum + (r.mid * weights[i]), 0) / weights.reduce((a,b)=>a+b,0);
+
+      if (uniformityScore < 45){
+        suggestedMin = weightedPercentile(mids, weights, 0.25);
+        suggestedMax = weightedPercentile(mids, weights, 0.75);
       }
 
-      const low = percentile(mids, 0.25);
-      const ideal = percentile(mids, 0.50);
-      const high = percentile(mids, 0.75);
+      if (uniformityScore >= 75){
+        suggestedIdeal = (suggestedIdeal * 0.7) + (avgMid * 0.3);
+      } else if (uniformityScore < 45){
+        suggestedIdeal = (suggestedMin + suggestedMax) / 2;
+      }
 
-      premiumRangeEl.textContent = `$${safeNum(low)} - $${safeNum(high)}`;
-      idealPremiumEl.textContent = `$${safeNum(ideal)}`;
-      contractsUsedEl.textContent = String(top.length);
-    }
+      const avgScore = average(scores);
+      const avgSpread = average(spreads);
 
-    function refreshFilteredView() {
-      const filtered = filterContractsForEngine();
-      renderTable(filtered);
-      updateRangeSummary(filtered);
-    }
-
-    expirationSelect.addEventListener('change', refreshFilteredView);
-    optionTypeSelect.addEventListener('change', refreshFilteredView);
-    distancePctSelect.addEventListener('change', refreshFilteredView);
-
-    [tickerInput, apiKeyInput].forEach(input => {
-      input.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          loadBtn.click();
-        }
+      renderSummary({
+        stockPrice,
+        suggestedMin,
+        suggestedMax,
+        suggestedIdeal,
+        used: finalContracts.length,
+        avgScore,
+        uniformityScore,
+        avgSpread,
+        premiumMin,
+        premiumMax,
+        ticker,
+        optionType,
+        expiration
       });
-    });
 
-    async function fetchStockQuote(ticker, token) {
-      const url = `https://api.marketdata.app/v1/stocks/quotes/${ticker}/?token=${encodeURIComponent(token)}`;
-      const response = await fetch(url);
-      const data = await response.json();
+      renderTable(finalContracts, premiumMin, premiumMax);
 
-      if (!data || data.s === 'error' || !Array.isArray(data.last) || !data.last.length) {
-        throw new Error(`Stock quote error: ${JSON.stringify(data)}`);
-      }
-
-      currentStockPrice = Number(data.last[0] ?? 0);
-      stockPriceEl.textContent = currentStockPrice ? `$${safeNum(currentStockPrice)}` : '--';
+      els.statusBox.innerHTML = `
+        Loaded <strong>${rows.length}</strong> raw contracts for <strong>${ticker}</strong>.
+        Filtered to <strong>${filteredTypeExpiry.length}</strong> ${optionType.toUpperCase()} contracts for
+        <strong>${expiration}</strong>. Final selection used <strong>${finalContracts.length}</strong> contracts.
+      `;
     }
 
-    async function fetchOptionsChain(ticker, token) {
-      const url = `https://api.marketdata.app/v1/options/chain/${ticker}/?token=${encodeURIComponent(token)}`;
-      const response = await fetch(url);
-      const data = await response.json();
+    function renderSummary(data){
+      els.stockPriceCard.textContent = fmtMoney(data.stockPrice);
+      els.premiumRangeCard.textContent = `${fmtMoney(data.suggestedMin)} - ${fmtMoney(data.suggestedMax)}`;
+      els.idealPremiumCard.textContent = fmtMoney(data.suggestedIdeal);
+      els.contractsUsedCard.textContent = data.used;
 
-      if (!data || !data.s || data.s === 'error') {
-        throw new Error(`Options chain error: ${JSON.stringify(data)}`);
-      }
+      els.avgScoreMetric.textContent = Number(data.avgScore).toFixed(1);
+      els.uniformityMetric.textContent = Number(data.uniformityScore).toFixed(1);
+      els.spreadMetric.textContent = fmtPct(data.avgSpread);
 
-      const len = (data.optionSymbol || []).length;
-      fullOptionsData = [];
+      const minAxis = Math.max(0, Math.min(data.premiumMin, data.suggestedMin) * 0.75);
+      const maxAxis = Math.max(data.premiumMax, data.suggestedMax) * 1.25;
+      const total = Math.max(0.01, maxAxis - minAxis);
 
-      for (let i = 0; i < len; i++) {
-        const rawExpiration = data.expiration?.[i];
-        const expirationDate = rawExpiration
-          ? new Date(Number(rawExpiration) * 1000).toISOString().split('T')[0]
-          : '';
+      const fillLeft = ((data.suggestedMin - minAxis) / total) * 100;
+      const fillWidth = ((data.suggestedMax - data.suggestedMin) / total) * 100;
+      const idealLeft = ((data.suggestedIdeal - minAxis) / total) * 100;
 
-        fullOptionsData.push({
-          optionSymbol: data.optionSymbol?.[i],
-          side: data.side?.[i] || '',
-          strike: Number(data.strike?.[i] ?? 0),
-          expiration: expirationDate,
-          bid: Number(data.bid?.[i] ?? 0),
-          ask: Number(data.ask?.[i] ?? 0),
-          last: Number(data.last?.[i] ?? 0),
-          volume: Number(data.volume?.[i] ?? 0),
-          openInterest: Number(data.openInterest?.[i] ?? 0)
-        });
-      }
+      els.rangeFill.style.left = clamp(fillLeft, 0, 100) + "%";
+      els.rangeFill.style.width = clamp(fillWidth, 0, 100) + "%";
+      els.rangeIdeal.style.left = clamp(idealLeft, 0, 100) + "%";
+
+      els.rangeLabels.innerHTML = `
+        <span>${fmtMoney(minAxis)}</span>
+        <span>Preferred input band: ${fmtMoney(data.premiumMin)} - ${fmtMoney(data.premiumMax)}</span>
+        <span>${fmtMoney(maxAxis)}</span>
+      `;
+
+      let uniformityText = "mixed";
+      if (data.uniformityScore >= 75) uniformityText = "high";
+      else if (data.uniformityScore >= 50) uniformityText = "moderate";
+      else uniformityText = "low";
+
+      els.rangeContext.textContent = `${data.ticker} • ${data.optionType.toUpperCase()} • ${data.expiration} • Uniformity ${uniformityText}`;
     }
 
-    loadBtn.addEventListener('click', async () => {
-      const ticker = tickerInput.value.trim().toUpperCase();
-      const token = apiKeyInput.value.trim();
+    function renderTable(rows, premiumMin, premiumMax){
+      els.resultsTableBody.innerHTML = rows.map(r => {
+        const inBand = r.mid >= premiumMin && r.mid <= premiumMax;
+        return `
+          <tr>
+            <td>${r.type}</td>
+            <td>${r.strike.toFixed(2)}</td>
+            <td>${r.expiration}</td>
+            <td>${r.bid.toFixed(2)}</td>
+            <td>${r.ask.toFixed(2)}</td>
+            <td>${r.mid.toFixed(2)}</td>
+            <td>${r.spread.toFixed(2)}</td>
+            <td>${fmtPct(r.spreadPct)}</td>
+            <td>${isFinite(r.last) ? r.last.toFixed(2) : "--"}</td>
+            <td>${Math.round(r.volume)}</td>
+            <td>${Math.round(r.openInterest)}</td>
+            <td>${fmtPct(r.distancePct)}</td>
+            <td>${r.premiumFit.toFixed(1)}</td>
+            <td>${r.liquidityScore.toFixed(1)}</td>
+            <td>${r.tradabilityScore.toFixed(1)}</td>
+            <td><strong>${r.refinedScore.toFixed(1)}</strong></td>
+            <td>${inBand ? getStatusPill(r.refinedScore) : '<span class="pill pill-warn">Out of band</span>'}</td>
+          </tr>
+        `;
+      }).join("");
+    }
 
-      if (!ticker || !token) {
-        statusDiv.textContent = 'Please enter ticker and token.';
-        return;
-      }
+    function clearTable(){
+      els.resultsTableBody.innerHTML = "";
+      els.stockPriceCard.textContent = "$--";
+      els.premiumRangeCard.textContent = "$-- - $--";
+      els.idealPremiumCard.textContent = "$--";
+      els.contractsUsedCard.textContent = "0";
+      els.avgScoreMetric.textContent = "--";
+      els.uniformityMetric.textContent = "--";
+      els.spreadMetric.textContent = "--";
+      els.rangeFill.style.left = "0%";
+      els.rangeFill.style.width = "0%";
+      els.rangeIdeal.style.left = "0%";
+      els.rangeContext.textContent = "Awaiting analysis...";
+      els.rangeLabels.innerHTML = `<span>$0.00</span><span>$0.00</span>`;
+    }
 
-      statusDiv.textContent = 'Loading stock price and options data...';
-      tableBody.innerHTML = '<tr><td colspan="13">Loading...</td></tr>';
-      expirationSelect.innerHTML = '<option value="">Loading expirations...</option>';
-      stockPriceEl.textContent = '--';
-      premiumRangeEl.textContent = '--';
-      idealPremiumEl.textContent = '--';
-      contractsUsedEl.textContent = '--';
-
-      try {
-        await fetchStockQuote(ticker, token);
-        await fetchOptionsChain(ticker, token);
-
-        populateExpirations(fullOptionsData);
-        refreshFilteredView();
-
-        statusDiv.textContent = `Loaded quote + ${fullOptionsData.length} raw contracts for ${ticker}.`;
-      } catch (error) {
-        console.error(error);
-        statusDiv.textContent = `Error loading data: ${error.message}`;
-        tableBody.innerHTML = '<tr><td colspan="13">Error loading data.</td></tr>';
-        expirationSelect.innerHTML = '<option value="">No expiration loaded yet</option>';
-      }
+    els.analyzeBtn.addEventListener("click", analyze);
+    els.loadSampleBtn.addEventListener("click", () => {
+      els.csvInput.value = sampleCSV;
+      els.statusBox.innerHTML = "Sample data loaded.";
     });
+    els.clearBtn.addEventListener("click", () => {
+      clearTable();
+      els.statusBox.innerHTML = "Table cleared.";
+    });
+
+    window.addEventListener("load", analyze);
   </script>
 </body>
 </html>
