@@ -148,6 +148,12 @@
       filteredRows = rows.filter(r => r.side === selectedType);
     }
 
+    filteredRows = filteredRows.filter(r => {
+      const spreadOk = r.ask > 0;
+      const priceOk = r.strike > 5;
+      return spreadOk && priceOk;
+    });
+
     if (!filteredRows || filteredRows.length === 0) {
       tableBody.innerHTML = '<tr><td colspan="9">No options found for this selection.</td></tr>';
       return;
@@ -192,7 +198,8 @@
 
   function refreshFilteredView() {
     const exp = expirationSelect.value;
-    const filtered = fullOptionsData.filter(item => item.expiration === exp);
+    let filtered = fullOptionsData.filter(item => item.expiration === exp);
+    filtered.sort((a, b) => a.strike - b.strike);
     renderTable(filtered);
   }
 
@@ -239,23 +246,33 @@
           ? new Date(Number(rawExpiration) * 1000).toISOString().split('T')[0]
           : '';
 
+        const strike = Number(data.strike?.[i] ?? 0);
+        const bid = Number(data.bid?.[i] ?? 0);
+        const ask = Number(data.ask?.[i] ?? 0);
+        const last = Number(data.last?.[i] ?? 0);
+        const volume = Number(data.volume?.[i] ?? 0);
+        const openInterest = Number(data.openInterest?.[i] ?? 0);
+        const side = data.side?.[i] || '';
+
+        if (strike <= 5) continue;
+
         fullOptionsData.push({
           optionSymbol: data.optionSymbol?.[i],
-          side: data.side?.[i],
-          strike: data.strike?.[i],
+          side,
+          strike,
           expiration: expirationDate,
-          bid: data.bid?.[i],
-          ask: data.ask?.[i],
-          last: data.last?.[i],
-          volume: data.volume?.[i],
-          openInterest: data.openInterest?.[i]
+          bid,
+          ask,
+          last,
+          volume,
+          openInterest
         });
       }
 
       populateExpirations(fullOptionsData);
       refreshFilteredView();
 
-      statusDiv.textContent = `Loaded ${fullOptionsData.length} contracts for ${ticker}.`;
+      statusDiv.textContent = `Loaded ${fullOptionsData.length} filtered contracts for ${ticker}.`;
     } catch (error) {
       console.error(error);
       statusDiv.textContent = `Error loading data: ${error.message}`;
