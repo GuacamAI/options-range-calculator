@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Options Range Calculator - Version 5.1</title>
+  <title>Options Range Calculator - Version 5.2</title>
   <style>
     :root{
       --bg:#0b1020;
@@ -21,7 +21,6 @@
     }
 
     *{box-sizing:border-box}
-
     body{
       margin:0;
       background:linear-gradient(180deg,#09101d 0%, #0d1326 100%);
@@ -31,7 +30,7 @@
     }
 
     .container{
-      max-width:1450px;
+      max-width:1500px;
       margin:24px auto;
       padding:0 18px 40px;
     }
@@ -164,7 +163,7 @@
 
     .summary{
       display:grid;
-      grid-template-columns:repeat(5, minmax(160px, 1fr));
+      grid-template-columns:repeat(6, minmax(150px, 1fr));
       gap:12px;
       margin-bottom:16px;
     }
@@ -196,7 +195,7 @@
 
     .metrics{
       display:grid;
-      grid-template-columns:repeat(4, minmax(180px, 1fr));
+      grid-template-columns:repeat(5, minmax(170px, 1fr));
       gap:12px;
       margin-top:14px;
     }
@@ -278,7 +277,7 @@
     table{
       width:100%;
       border-collapse:collapse;
-      min-width:1320px;
+      min-width:1500px;
       background:var(--panel);
     }
 
@@ -363,25 +362,15 @@
       font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     }
 
-    @media (max-width: 1180px){
-      .grid{
-        grid-template-columns:1fr;
-      }
-      .summary{
-        grid-template-columns:1fr 1fr;
-      }
-      .metrics{
-        grid-template-columns:1fr 1fr;
-      }
+    @media (max-width: 1260px){
+      .grid{ grid-template-columns:1fr; }
+      .summary{ grid-template-columns:1fr 1fr 1fr; }
+      .metrics{ grid-template-columns:1fr 1fr; }
     }
 
     @media (max-width: 760px){
-      .form-grid{
-        grid-template-columns:1fr;
-      }
-      .summary,.metrics{
-        grid-template-columns:1fr;
-      }
+      .form-grid{ grid-template-columns:1fr; }
+      .summary,.metrics{ grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -389,14 +378,14 @@
   <div class="container">
     <div class="title">
       <h1>Options Range Calculator</h1>
-      <span class="badge">Version 5.1</span>
-      <span class="badge">Uniformity Fixed + In-Band Calculation + Confidence Label</span>
+      <span class="badge">Version 5.2</span>
+      <span class="badge">In-Band Range + Outlier Filter + Finer Confidence + Range Profile</span>
     </div>
 
     <div class="grid">
       <div class="panel">
         <h2>Inputs</h2>
-        <div class="subtle">Paste your option chain in CSV format. The engine filters contracts, scores them, then estimates a suggested premium range and ideal premium.</div>
+        <div class="subtle">Paste your option chain in CSV format. The engine filters contracts, scores them, removes extreme outliers, then estimates a suggested premium range and ideal premium.</div>
 
         <div class="form-grid" style="margin-top:14px;">
           <div class="field">
@@ -462,6 +451,16 @@
             <input id="scoreMin" type="number" step="1" value="35" />
           </div>
 
+          <div class="field">
+            <label for="outlierZ">Outlier Sensitivity (z-score)</label>
+            <input id="outlierZ" type="number" step="0.1" value="1.8" />
+          </div>
+
+          <div class="field">
+            <label for="minBaseContracts">Min In-Band Contracts for Base</label>
+            <input id="minBaseContracts" type="number" step="1" value="4" />
+          </div>
+
           <div class="field full">
             <label for="csvInput">Option Chain CSV</label>
             <textarea id="csvInput" spellcheck="false">type,strike,expiration,bid,ask,last,volume,openInterest
@@ -493,7 +492,7 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500</textarea>
           <strong>CSV columns expected:</strong><br>
           <span class="mono">type,strike,expiration,bid,ask,last,volume,openInterest</span><br><br>
           This version calculates:
-          spread %, distance %, refined score, premium fit, tradability, liquidity, uniformity, and confidence.
+          spread %, distance %, refined score, premium fit, tradability, liquidity, uniformity, confidence, range profile, and outlier filtering.
         </div>
       </div>
 
@@ -508,19 +507,19 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500</textarea>
           <div class="card">
             <div class="k">Suggested Premium Range</div>
             <div class="v" id="premiumRangeCard">$-- - $--</div>
-            <div class="s">Weighted band from the best contracts</div>
+            <div class="s">Now prioritized from in-band base</div>
           </div>
 
           <div class="card">
             <div class="k">Suggested Ideal Premium</div>
             <div class="v" id="idealPremiumCard">$--</div>
-            <div class="s">Weighted center, adjusted by uniformity</div>
+            <div class="s">Weighted center after base filtering</div>
           </div>
 
           <div class="card">
             <div class="k">Top Contracts Used</div>
             <div class="v" id="contractsUsedCard">0</div>
-            <div class="s">Contracts surviving filters and final rank</div>
+            <div class="s">Contracts surviving filters and ranking</div>
           </div>
 
           <div class="card">
@@ -528,23 +527,29 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500</textarea>
             <div class="v" id="confidenceCard">--</div>
             <div class="s">High / Medium / Low</div>
           </div>
+
+          <div class="card">
+            <div class="k">Range Profile</div>
+            <div class="v" id="rangeProfileCard">--</div>
+            <div class="s">Tight / Balanced / Wide</div>
+          </div>
         </div>
 
         <div class="panel">
           <h2>Result Overview</h2>
-          <div class="subtle">This version gives more weight to tradability, premium quality, and consistency among the best in-band contracts.</div>
+          <div class="subtle">This version prioritizes contracts inside your premium band, removes obvious premium outliers, and grades the range shape more precisely.</div>
 
           <div class="metrics">
             <div class="metric">
               <div class="label">Average Refined Score</div>
               <div class="value" id="avgScoreMetric">--</div>
-              <div class="desc">Mean of final contracts after ranking</div>
+              <div class="desc">Mean of final ranked contracts</div>
             </div>
 
             <div class="metric">
               <div class="label">Uniformity Score</div>
               <div class="value" id="uniformityMetric">--</div>
-              <div class="desc">How tightly clustered the preferred premiums are</div>
+              <div class="desc">Clustering of the selected premium base</div>
             </div>
 
             <div class="metric">
@@ -556,7 +561,13 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500</textarea>
             <div class="metric">
               <div class="label">Contracts In-Band Used</div>
               <div class="value" id="inBandMetric">--</div>
-              <div class="desc">Used first for uniformity whenever possible</div>
+              <div class="desc">Preferred first for range and uniformity</div>
+            </div>
+
+            <div class="metric">
+              <div class="label">Outliers Removed</div>
+              <div class="value" id="outliersMetric">--</div>
+              <div class="desc">Extreme premium points excluded from range base</div>
             </div>
           </div>
 
@@ -578,8 +589,8 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500</textarea>
           </div>
 
           <div class="footer-note" id="explanationBox">
-            <strong>How the refined score works:</strong><br>
-            The model rewards <strong>tight spreads</strong>, <strong>higher volume</strong>, <strong>higher open interest</strong>, <strong>reasonable strike distance</strong>, and <strong>premiums inside your preferred band</strong>. Uniformity is calculated first from <strong>in-band contracts</strong>. If there are too few, the model falls back to all selected contracts. Confidence combines score quality, spread quality, and premium uniformity.
+            <strong>How V5.2 works:</strong><br>
+            The model ranks contracts by tradability, premium fit, strike distance, and liquidity. Then it builds a <strong>range base</strong> using in-band contracts whenever possible. It also removes <strong>premium outliers</strong> before calculating uniformity, range, and ideal premium. Confidence is graded from score quality, spread quality, in-band density, and uniformity. The range profile tells you whether the premium zone is <strong>Tight</strong>, <strong>Balanced</strong>, or <strong>Wide</strong>.
           </div>
 
           <div class="table-wrap">
@@ -603,6 +614,7 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500</textarea>
                   <th>Tradability</th>
                   <th>Refined Score</th>
                   <th>Band</th>
+                  <th>Base</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -634,6 +646,8 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500</textarea>
       minOI: $("minOI"),
       maxSpreadPct: $("maxSpreadPct"),
       scoreMin: $("scoreMin"),
+      outlierZ: $("outlierZ"),
+      minBaseContracts: $("minBaseContracts"),
       csvInput: $("csvInput"),
       analyzeBtn: $("analyzeBtn"),
       loadSampleBtn: $("loadSampleBtn"),
@@ -643,10 +657,12 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500</textarea>
       idealPremiumCard: $("idealPremiumCard"),
       contractsUsedCard: $("contractsUsedCard"),
       confidenceCard: $("confidenceCard"),
+      rangeProfileCard: $("rangeProfileCard"),
       avgScoreMetric: $("avgScoreMetric"),
       uniformityMetric: $("uniformityMetric"),
       spreadMetric: $("spreadMetric"),
       inBandMetric: $("inBandMetric"),
+      outliersMetric: $("outliersMetric"),
       rangeContext: $("rangeContext"),
       rangeFill: $("rangeFill"),
       rangeIdeal: $("rangeIdeal"),
@@ -696,6 +712,13 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
       const avg = average(arr);
       const variance = average(arr.map(x => (x - avg) ** 2));
       return Math.sqrt(variance);
+    }
+
+    function median(arr){
+      if (!arr.length) return NaN;
+      const s = [...arr].sort((a,b)=>a-b);
+      const mid = Math.floor(s.length / 2);
+      return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
     }
 
     function splitCSVLine(line){
@@ -754,8 +777,7 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
       if (spreadPct >= maxSpreadPct * 1.8) return 0;
       return clamp(
         100 - ((spreadPct - 2) / Math.max(1, (maxSpreadPct * 1.8 - 2))) * 100,
-        0,
-        100
+        0, 100
       );
     }
 
@@ -764,8 +786,7 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
       if (volume >= minVolume * 20) return 100;
       return clamp(
         (Math.log10(volume + 1) / Math.log10(minVolume * 20 + 1)) * 100,
-        0,
-        100
+        0, 100
       );
     }
 
@@ -774,8 +795,7 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
       if (oi >= minOI * 30) return 100;
       return clamp(
         (Math.log10(oi + 1) / Math.log10(minOI * 30 + 1)) * 100,
-        0,
-        100
+        0, 100
       );
     }
 
@@ -785,8 +805,7 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
       if (distancePct >= maxDistancePct * 1.3) return 0;
       return clamp(
         100 - ((distancePct - maxDistancePct * 0.25) / Math.max(0.0001, maxDistancePct * 1.05)) * 100,
-        0,
-        100
+        0, 100
       );
     }
 
@@ -814,9 +833,10 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
     function weightedPercentile(values, weights, p){
       if (!values.length) return NaN;
 
-      const items = values
-        .map((v, i) => ({ v, w: Math.max(0, weights[i] || 0) }))
-        .sort((a, b) => a.v - b.v);
+      const items = values.map((v, i) => ({
+        v,
+        w: Math.max(0, weights[i] || 0)
+      })).sort((a, b) => a.v - b.v);
 
       const totalWeight = items.reduce((s, x) => s + x.w, 0);
       if (totalWeight <= 0) return items[Math.floor((items.length - 1) * p)].v;
@@ -832,13 +852,68 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
       return items[items.length - 1].v;
     }
 
-    function confidenceLabel(avgScore, uniformityScore, avgSpread){
-      const spreadScore = clamp(100 - (avgSpread * 6), 0, 100);
-      const composite = (avgScore * 0.45) + (uniformityScore * 0.35) + (spreadScore * 0.20);
+    function removePremiumOutliers(contracts, zThreshold){
+      if (contracts.length < 5) {
+        return {
+          filtered: contracts.map(c => ({...c, outlierRemoved:false, baseIncluded:true})),
+          removedCount: 0
+        };
+      }
 
-      if (composite >= 80) return { label: "High", composite };
-      if (composite >= 60) return { label: "Medium", composite };
+      const mids = contracts.map(r => r.mid);
+      const med = median(mids);
+      const sd = stdDev(mids);
+
+      if (!isFinite(sd) || sd === 0) {
+        return {
+          filtered: contracts.map(c => ({...c, outlierRemoved:false, baseIncluded:true})),
+          removedCount: 0
+        };
+      }
+
+      let removedCount = 0;
+      const filtered = contracts.map(c => {
+        const z = Math.abs((c.mid - med) / sd);
+        const keep = z <= zThreshold;
+        if (!keep) removedCount++;
+        return {
+          ...c,
+          outlierRemoved: !keep,
+          baseIncluded: keep
+        };
+      }).filter(c => !c.outlierRemoved);
+
+      if (filtered.length < 3) {
+        return {
+          filtered: contracts.map(c => ({...c, outlierRemoved:false, baseIncluded:true})),
+          removedCount: 0
+        };
+      }
+
+      return { filtered, removedCount };
+    }
+
+    function confidenceLabel(avgScore, uniformityScore, avgSpread, inBandRatio){
+      const spreadScore = clamp(100 - (avgSpread * 6), 0, 100);
+      const bandScore = clamp(inBandRatio * 100, 0, 100);
+      const composite =
+        (avgScore * 0.35) +
+        (uniformityScore * 0.30) +
+        (spreadScore * 0.20) +
+        (bandScore * 0.15);
+
+      if (composite >= 82) return { label: "High", composite };
+      if (composite >= 64) return { label: "Medium", composite };
       return { label: "Low", composite };
+    }
+
+    function rangeProfileLabel(rangeMin, rangeMax, idealPremium){
+      const width = rangeMax - rangeMin;
+      const relativeWidth = idealPremium > 0 ? width / idealPremium : 999;
+
+      if (relativeWidth <= 0.55) return "Tight";
+      if (relativeWidth <= 1.05) return "Balanced";
+      return "Wide";
     }
 
     function getContractStatusPill(score){
@@ -853,6 +928,12 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
         : '<span class="pill pill-warn">Out of Band</span>';
     }
 
+    function getBasePill(contract){
+      if (contract.outlierRemoved) return '<span class="pill pill-bad">Removed</span>';
+      if (contract.baseIncluded) return '<span class="pill pill-info">Base</span>';
+      return '<span class="pill pill-warn">No</span>';
+    }
+
     function clearTable(){
       els.resultsTableBody.innerHTML = "";
       els.stockPriceCard.textContent = "$--";
@@ -860,10 +941,12 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
       els.idealPremiumCard.textContent = "$--";
       els.contractsUsedCard.textContent = "0";
       els.confidenceCard.textContent = "--";
+      els.rangeProfileCard.textContent = "--";
       els.avgScoreMetric.textContent = "--";
       els.uniformityMetric.textContent = "--";
       els.spreadMetric.textContent = "--";
       els.inBandMetric.textContent = "--";
+      els.outliersMetric.textContent = "--";
       els.rangeFill.style.left = "0%";
       els.rangeFill.style.width = "0%";
       els.rangeIdeal.style.left = "0%";
@@ -884,6 +967,8 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
       const minOI = parseFloat(els.minOI.value);
       const maxSpreadPct = parseFloat(els.maxSpreadPct.value);
       const scoreMin = parseFloat(els.scoreMin.value);
+      const outlierZ = parseFloat(els.outlierZ.value);
+      const minBaseContracts = Math.max(1, parseInt(els.minBaseContracts.value || "4", 10));
 
       if (!isFinite(stockPrice) || stockPrice <= 0){
         els.statusBox.innerHTML = "Invalid stock price.";
@@ -957,7 +1042,9 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
           liquidityScore,
           tradabilityScore,
           refinedScore,
-          passesBase
+          passesBase,
+          outlierRemoved: false,
+          baseIncluded: false
         };
       });
 
@@ -966,43 +1053,52 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
         .sort((a, b) => b.refinedScore - a.refinedScore);
 
       const selected = surviving.filter(r => r.refinedScore >= scoreMin).slice(0, topContracts);
-      const finalContracts = selected.length ? selected : surviving.slice(0, topContracts);
+      const finalContractsRaw = selected.length ? selected : surviving.slice(0, topContracts);
 
-      if (!finalContracts.length){
+      if (!finalContractsRaw.length){
         els.statusBox.innerHTML = "No contracts passed the current filters. Loosen the minimums or widen the spread / distance limits.";
         clearTable();
         return;
       }
 
-      const inBandContracts = finalContracts.filter(r => r.inBand);
-      const uniformityBase = inBandContracts.length >= 4 ? inBandContracts : finalContracts;
+      const inBandContracts = finalContractsRaw.filter(r => r.inBand);
+      const preBase = inBandContracts.length >= minBaseContracts ? inBandContracts : finalContractsRaw;
 
-      const midsBase = uniformityBase.map(r => r.mid);
-      const weightsBase = uniformityBase.map(r => Math.max(1, r.refinedScore));
+      const outlierResult = removePremiumOutliers(preBase, outlierZ);
+      const baseContracts = outlierResult.filtered;
+      const removedOutliers = outlierResult.removedCount;
 
-      const midsAll = finalContracts.map(r => r.mid);
-      const weightsAll = finalContracts.map(r => Math.max(1, r.refinedScore));
+      const baseKeys = new Set(baseContracts.map(r => `${r.type}|${r.strike}|${r.expiration}|${r.mid.toFixed(4)}`));
+      const finalContracts = finalContractsRaw.map(r => {
+        const key = `${r.type}|${r.strike}|${r.expiration}|${r.mid.toFixed(4)}`;
+        const fromPreBase = preBase.some(x => `${x.type}|${x.strike}|${x.expiration}|${x.mid.toFixed(4)}` === key);
+        return {
+          ...r,
+          outlierRemoved: fromPreBase && !baseKeys.has(key),
+          baseIncluded: baseKeys.has(key)
+        };
+      });
+
+      const midsBase = baseContracts.map(r => r.mid);
+      const weightsBase = baseContracts.map(r => Math.max(1, r.refinedScore));
       const scoresAll = finalContracts.map(r => r.refinedScore);
       const spreadsAll = finalContracts.map(r => r.spreadPct);
 
       const avgMidBase = average(midsBase);
       const sdMidBase = stdDev(midsBase);
-
-      // Fixed uniformity formula:
-      // CV stays in decimal form, not percentage form.
       const cv = avgMidBase > 0 ? (sdMidBase / avgMidBase) : 999;
       const uniformityScore = clamp(100 - (cv * 85), 0, 100);
 
-      let suggestedMin = weightedPercentile(midsAll, weightsAll, 0.20);
-      let suggestedMax = weightedPercentile(midsAll, weightsAll, 0.80);
-      let suggestedIdeal = finalContracts.reduce((sum, r, i) => sum + (r.mid * weightsAll[i]), 0) / weightsAll.reduce((a, b) => a + b, 0);
+      let suggestedMin = weightedPercentile(midsBase, weightsBase, 0.20);
+      let suggestedMax = weightedPercentile(midsBase, weightsBase, 0.80);
+      let suggestedIdeal = baseContracts.reduce((sum, r, i) => sum + (r.mid * weightsBase[i]), 0) / weightsBase.reduce((a, b) => a + b, 0);
 
-      if (uniformityScore < 45){
-        suggestedMin = weightedPercentile(midsAll, weightsAll, 0.25);
-        suggestedMax = weightedPercentile(midsAll, weightsAll, 0.75);
+      if (uniformityScore < 45 && baseContracts.length >= 4){
+        suggestedMin = weightedPercentile(midsBase, weightsBase, 0.25);
+        suggestedMax = weightedPercentile(midsBase, weightsBase, 0.75);
       }
 
-      if (uniformityScore >= 75){
+      if (uniformityScore >= 78){
         suggestedIdeal = (suggestedIdeal * 0.7) + (avgMidBase * 0.3);
       } else if (uniformityScore < 45){
         suggestedIdeal = (suggestedMin + suggestedMax) / 2;
@@ -1010,7 +1106,9 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
 
       const avgScore = average(scoresAll);
       const avgSpread = average(spreadsAll);
-      const confidence = confidenceLabel(avgScore, uniformityScore, avgSpread);
+      const inBandRatio = finalContracts.length ? (inBandContracts.length / finalContracts.length) : 0;
+      const confidence = confidenceLabel(avgScore, uniformityScore, avgSpread, inBandRatio);
+      const rangeProfile = rangeProfileLabel(suggestedMin, suggestedMax, suggestedIdeal);
 
       renderSummary({
         stockPrice,
@@ -1027,21 +1125,26 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
         optionType,
         expiration,
         confidence: confidence.label,
+        rangeProfile,
         inBandCount: inBandContracts.length,
-        uniformityBaseCount: uniformityBase.length
+        outliersRemoved: removedOutliers
       });
 
       renderTable(finalContracts);
 
-      const baseText = inBandContracts.length >= 4
-        ? `Uniformity computed from ${inBandContracts.length} in-band contracts.`
-        : `Not enough in-band contracts; uniformity computed from all ${uniformityBase.length} selected contracts.`;
+      const baseText = inBandContracts.length >= minBaseContracts
+        ? `Range base started from ${inBandContracts.length} in-band contracts.`
+        : `Not enough in-band contracts; base started from all ${finalContracts.length} selected contracts.`;
+
+      const outlierText = removedOutliers > 0
+        ? `Removed ${removedOutliers} premium outlier(s) from the base calculation.`
+        : `No premium outliers were removed.`;
 
       els.statusBox.innerHTML = `
         Loaded <strong>${rows.length}</strong> raw contracts for <strong>${ticker}</strong>.
         Filtered to <strong>${filteredTypeExpiry.length}</strong> ${optionType.toUpperCase()} contracts for
         <strong>${expiration}</strong>. Final selection used <strong>${finalContracts.length}</strong> contracts.
-        ${baseText}
+        ${baseText} ${outlierText}
       `;
     }
 
@@ -1051,10 +1154,12 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
       els.idealPremiumCard.textContent = fmtMoney(data.suggestedIdeal);
       els.contractsUsedCard.textContent = data.used;
       els.confidenceCard.textContent = data.confidence;
+      els.rangeProfileCard.textContent = data.rangeProfile;
       els.avgScoreMetric.textContent = Number(data.avgScore).toFixed(1);
       els.uniformityMetric.textContent = Number(data.uniformityScore).toFixed(1);
       els.spreadMetric.textContent = fmtPct(data.avgSpread);
       els.inBandMetric.textContent = `${data.inBandCount}/${data.used}`;
+      els.outliersMetric.textContent = String(data.outliersRemoved);
 
       const minAxis = Math.max(0, Math.min(data.premiumMin, data.suggestedMin) * 0.75);
       const maxAxis = Math.max(data.premiumMax, data.suggestedMax) * 1.25;
@@ -1073,7 +1178,7 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
       else if (data.uniformityScore >= 50) uniformityText = "moderate";
 
       els.rangeContext.textContent =
-        `${data.ticker} • ${data.optionType.toUpperCase()} • ${data.expiration} • Uniformity ${uniformityText} • Confidence ${data.confidence}`;
+        `${data.ticker} • ${data.optionType.toUpperCase()} • ${data.expiration} • Uniformity ${uniformityText} • Confidence ${data.confidence} • ${data.rangeProfile}`;
 
       els.rangeLabels.innerHTML = `
         <span>${fmtMoney(minAxis)}</span>
@@ -1102,6 +1207,7 @@ put,97,2026-03-20,1.90,1.98,1.94,2100,14500`;
           <td>${r.tradabilityScore.toFixed(1)}</td>
           <td><strong>${r.refinedScore.toFixed(1)}</strong></td>
           <td>${getBandPill(r.inBand)}</td>
+          <td>${getBasePill(r)}</td>
           <td>${getContractStatusPill(r.refinedScore)}</td>
         </tr>
       `).join("");
